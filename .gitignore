@@ -1,0 +1,7 @@
+interno/
+kisword
+*.o
+po/*.mo
+tests/test_gbf
+tests/test_ref
+tests/test_module

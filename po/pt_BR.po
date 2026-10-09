@@ -1,0 +1,224 @@
+# Portuguese translations for kisword package.
+# Copyright (C) 2026 THE kisword'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the kisword package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: kisword 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-09 09:22-0300\n"
+"PO-Revision-Date: 2026-10-09 09:30-0300\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: src/main.c:27
+msgid "--dump needs exactly one module file"
+msgstr "--dump precisa de exatamente um arquivo de módulo"
+
+#: src/main.c:31
+msgid "Reference not recognized"
+msgstr "Referência não reconhecida"
+
+#: src/main.c:162
+msgid "Open at this reference (e.g. \"Jo 3:16\")"
+msgstr "Abrir nesta referência (ex.: \"Jo 3:16\")"
+
+#: src/main.c:162 src/main.c:164
+msgid "REF"
+msgstr "REF"
+
+#: src/main.c:163
+msgid "Print REF from the given module as plain text and exit"
+msgstr "Imprimir REF do módulo indicado como texto puro e sair"
+
+#: src/main.c:165
+msgid "Parse every verse of the given modules and report problems"
+msgstr "Analisar todos os versículos dos módulos indicados e relatar problemas"
+
+#: src/main.c:167
+msgid "Show the version and exit"
+msgstr "Mostrar a versão e sair"
+
+#: src/main.c:168
+msgid "[MODULE.bbl.mybible…]"
+msgstr "[MÓDULO.bbl.mybible…]"
+
+#: src/module.c:124
+#, c-format
+msgid "%s is not a MySword Bible module (%s)"
+msgstr "%s não é um módulo de Bíblia do MySword (%s)"
+
+#: src/module.c:155
+msgid ""
+"This is an encrypted MySword module. Encrypted modules are not supported."
+msgstr "Este é um módulo criptografado do MySword. Módulos criptografados não são suportados."
+
+#: src/module.c:158
+msgid "This module is compressed in a format kisword does not read yet."
+msgstr "Este módulo está comprimido num formato que o kisword ainda não lê."
+
+#: src/module.c:161
+msgid ""
+"The verse text in this module is binary (probably encrypted or compressed)."
+msgstr "O texto dos versículos deste módulo é binário (provavelmente criptografado ou comprimido)."
+
+#: src/module.c:275
+#, c-format
+msgid "%s has no verses."
+msgstr "%s não tem versículos."
+
+#: src/render.c:496
+msgid "Dictionaries are not supported yet."
+msgstr "Dicionários ainda não são suportados."
+
+#: src/window.c:265 src/window.c:442
+msgid "Could not open the module"
+msgstr "Não foi possível abrir o módulo"
+
+#: src/window.c:323
+#, c-format
+msgid "Reference not recognized: %s"
+msgstr "Referência não reconhecida: %s"
+
+#: src/window.c:328
+#, c-format
+msgid "%s is not in this module."
+msgstr "%s não está neste módulo."
+
+#: src/window.c:418
+msgid "Open MySword Bible module"
+msgstr "Abrir módulo de Bíblia do MySword"
+
+#: src/window.c:423
+msgid "MySword Bibles (*.bbl.mybible)"
+msgstr "Bíblias do MySword (*.bbl.mybible)"
+
+#: src/window.c:455
+msgid "Text font"
+msgstr "Fonte do texto"
+
+#: src/window.c:487
+msgid "A light Bible reader for MySword modules."
+msgstr "Um leitor de Bíblia leve para módulos do MySword."
+
+#: src/window.c:535
+msgid "_File"
+msgstr "_Arquivo"
+
+#: src/window.c:536
+msgid "_Open module…"
+msgstr "_Abrir módulo…"
+
+#: src/window.c:538
+msgid "_Quit"
+msgstr "_Sair"
+
+#: src/window.c:540
+msgid "_View"
+msgstr "_Exibir"
+
+#: src/window.c:541
+msgid "_Strong's numbers"
+msgstr "Números de _Strong"
+
+#: src/window.c:542
+msgid "_Footnotes"
+msgstr "_Notas de rodapé"
+
+#: src/window.c:543
+msgid "Words of Jesus in _red"
+msgstr "Palavras de Jesus em _vermelho"
+
+#: src/window.c:544
+msgid "_Paragraph layout"
+msgstr "Modo _parágrafo"
+
+#: src/window.c:546
+msgid "Zoom _in"
+msgstr "_Aumentar texto"
+
+#: src/window.c:549
+msgid "Zoom _out"
+msgstr "_Diminuir texto"
+
+#: src/window.c:551
+msgid "_Normal size"
+msgstr "Tamanho n_ormal"
+
+#: src/window.c:552
+msgid "_Font…"
+msgstr "_Fonte…"
+
+#: src/window.c:554
+msgid "_Go"
+msgstr "_Ir"
+
+#: src/window.c:555
+msgid "_Back"
+msgstr "_Voltar"
+
+#: src/window.c:556
+msgid "_Forward"
+msgstr "A_vançar"
+
+#: src/window.c:558
+msgid "_Previous chapter"
+msgstr "Capítulo _anterior"
+
+#: src/window.c:559
+msgid "_Next chapter"
+msgstr "_Próximo capítulo"
+
+#: src/window.c:561
+msgid "_Go to reference…"
+msgstr "_Ir para referência…"
+
+#: src/window.c:563
+msgid "_Help"
+msgstr "Aj_uda"
+
+#: src/window.c:564
+msgid "_About"
+msgstr "_Sobre"
+
+#: src/window.c:593
+msgid "Bible module"
+msgstr "Módulo de Bíblia"
+
+#: src/window.c:602
+msgid "Book"
+msgstr "Livro"
+
+#: src/window.c:607
+msgid "Chapter"
+msgstr "Capítulo"
+
+#: src/window.c:610
+msgid "Back (Alt+Left)"
+msgstr "Voltar (Alt+Esquerda)"
+
+#: src/window.c:611
+msgid "Forward (Alt+Right)"
+msgstr "Avançar (Alt+Direita)"
+
+#: src/window.c:615
+msgid "Go to a reference, e.g. \"Jo 3:16\", \"1Co 13\" or \"gn 1\" (Ctrl+L)"
+msgstr "Ir para uma referência, ex.: \"Jo 3:16\", \"1Co 13\" ou \"gn 1\" (Ctrl+L)"
+
+#: src/window.c:624
+msgid "Go to:"
+msgstr "Ir para:"
+
+#: src/window.c:700
+#, c-format
+msgid ""
+"No MySword Bible module found.\n"
+"\n"
+"Copy *.bbl.mybible files to %s, or use File → Open module…"
+msgstr "Nenhum módulo de Bíblia do MySword encontrado.\n\nCopie arquivos *.bbl.mybible para %s, ou use Arquivo → Abrir módulo…"

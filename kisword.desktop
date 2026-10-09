@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=kisword
+GenericName=Bible Reader
+GenericName[pt_BR]=Leitor de Bíblia
+Comment=Read MySword Bible modules
+Comment[pt_BR]=Leia módulos de Bíblia do MySword
+Exec=kisword %F
+Icon=accessories-dictionary
+Terminal=false
+Categories=Education;Literature;
+Keywords=Bible;MySword;Scripture;Bíblia;

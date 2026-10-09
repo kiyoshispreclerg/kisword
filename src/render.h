@@ -1,0 +1,41 @@
+/* render.h - the chapter view: verse text rendered into a GtkTextView.
+ *
+ * No WebKit: each tag of the verse text becomes a GtkTextTag. Strong's
+ * numbers and footnote markers are clickable and open a small popup;
+ * Ctrl+C copies whole verses as plain text with their reference. */
+#ifndef KS_RENDER_H
+#define KS_RENDER_H
+
+#include <gtk/gtk.h>
+
+#include "module.h"
+
+typedef struct {
+    gboolean show_strong;
+    gboolean show_notes;
+    gboolean red_letters;
+    gboolean paragraphs; /* paragraph layout when the chapter has <CM> marks */
+} KsViewOptions;
+
+typedef struct KsView KsView;
+
+KsView *ks_view_new(const KsViewOptions *opt);
+GtkWidget *ks_view_widget(KsView *v); /* the scrolled window to pack */
+GtkWidget *ks_view_text(KsView *v);   /* the GtkTextView inside it */
+
+/* Re-renders the current chapter with new options, keeping the verse at
+ * the top of the view. */
+void ks_view_set_options(KsView *v, const KsViewOptions *opt);
+void ks_view_set_font(KsView *v, const PangoFontDescription *font);
+
+/* Shows one chapter. scroll_verse: verse to put at the top (0 = start);
+ * hl_from..hl_to: verses to highlight (0 = none; hl_to 0 = just hl_from). */
+void ks_view_show(KsView *v, KsModule *m, int book, int chapter, int scroll_verse, int hl_from, int hl_to);
+
+/* Replaces the content with a plain message (no module shown). */
+void ks_view_message(KsView *v, const char *text);
+
+/* Verse at the top of the visible area, 0 if nothing is shown. */
+int ks_view_top_verse(KsView *v);
+
+#endif /* KS_RENDER_H */
