@@ -47,6 +47,11 @@ void ks_module_free(KsModule *m);
  * Either list may be NULL. */
 GPtrArray *ks_module_scan(const char *const *dirs, const char *const *files);
 
+/* Every non-empty text column of Details, lower-case name -> value (valid
+ * UTF-8), read from the file now; works on unsupported modules too. NULL
+ * if the file can't be read. */
+GHashTable *ks_module_details(const KsModule *m);
+
 /* Abbreviation, or the title if there is none. */
 const char *ks_module_label(const KsModule *m);
 

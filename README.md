@@ -27,6 +27,8 @@ but a separate program; it may end up in a future `kidesktop-extras`.
 - Copy (Ctrl+C) gives whole verses as plain text with the reference:
   `Jo 3:16-17 (KJV)` followed by the verses.
 - Back/forward history, zoom, font choice, last position remembered.
+- Help → About the module shows the module's details and its description
+  (the HTML in `Details.Comments`) as formatted text.
 - Right-to-left modules are laid out right-to-left.
 - Interface in English and Brazilian Portuguese; book names follow the locale.
 

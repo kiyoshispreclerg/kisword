@@ -165,6 +165,31 @@ KsModule *ks_module_probe(const char *path, GError **err)
     return m;
 }
 
+GHashTable *ks_module_details(const KsModule *m)
+{
+    GHashTable *t;
+    sqlite3 *db = NULL;
+    sqlite3_stmt *st;
+
+    if (sqlite3_open_v2(m->path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK ||
+        sqlite3_prepare_v2(db, "SELECT * FROM Details LIMIT 1", -1, &st, NULL) != SQLITE_OK) {
+        sqlite3_close(db);
+        return NULL;
+    }
+    t = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+    if (sqlite3_step(st) == SQLITE_ROW) {
+        for (int i = 0; i < sqlite3_column_count(st); i++) {
+            char *v = sqlite3_column_type(st, i) == SQLITE_BLOB ? NULL : col_text(st, i);
+
+            if (v)
+                g_hash_table_insert(t, g_ascii_strdown(sqlite3_column_name(st, i), -1), v);
+        }
+    }
+    sqlite3_finalize(st);
+    sqlite3_close(db);
+    return t;
+}
+
 void ks_module_free(KsModule *m)
 {
     if (!m)

@@ -6,3 +6,4 @@ tests/test_gbf
 tests/test_ref
 tests/test_module
 tests/test_rules
+tests/test_html

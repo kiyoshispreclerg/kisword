@@ -4,6 +4,7 @@
 #include "window.h"
 
 #include "books.h"
+#include "html.h"
 #include "ks_i18n.h"
 #include "module.h"
 #include "ref.h"
@@ -34,7 +35,7 @@ typedef struct {
     PangoFontDescription *font;
 
     GtkWidget *win, *mod_combo, *book_combo, *chap_spin, *entry, *status;
-    GtkWidget *back_btn, *fwd_btn, *back_item, *fwd_item;
+    GtkWidget *back_btn, *fwd_btn, *back_item, *fwd_item, *info_item;
     GtkListStore *mod_store, *book_store;
     GtkCheckMenuItem *chk_strong, *chk_notes, *chk_red, *chk_para;
     guint status_ctx;
@@ -162,6 +163,7 @@ static void sync_widgets(KsWin *w)
     gtk_widget_set_sensitive(w->back_item, w->back->len > 0);
     gtk_widget_set_sensitive(w->fwd_btn, w->fwd->len > 0);
     gtk_widget_set_sensitive(w->fwd_item, w->fwd->len > 0);
+    gtk_widget_set_sensitive(w->info_item, w->mod != NULL);
 
     if (w->mod) {
         ref = g_strdup_printf("%s %d", ks_book_name(w->book), w->chapter);
@@ -491,6 +493,157 @@ static void cmd_about(KsWin *w)
                           "comments", _("A light Bible reader for MySword modules."), NULL);
 }
 
+/* ---- module information ---------------------------------------------------- */
+
+typedef struct {
+    GtkTextBuffer *b;
+    GtkTextTag *tags[7]; /* by KS_HTML_* bit */
+} InfoText;
+
+static void info_html_cb(const char *text, int len, unsigned style, void *data)
+{
+    InfoText *it = data;
+    GtkTextIter end, start;
+    int off;
+
+    gtk_text_buffer_get_end_iter(it->b, &end);
+    off = gtk_text_iter_get_offset(&end);
+    gtk_text_buffer_insert(it->b, &end, text, len);
+    gtk_text_buffer_get_iter_at_offset(it->b, &start, off);
+    for (int i = 0; i < 7; i++)
+        if (style & (1u << i))
+            gtk_text_buffer_apply_tag(it->b, it->tags[i], &start, &end);
+}
+
+static void info_insert(GtkTextBuffer *b, const char *text, const char *tag)
+{
+    GtkTextIter end;
+
+    gtk_text_buffer_get_end_iter(b, &end);
+    if (tag)
+        gtk_text_buffer_insert_with_tags_by_name(b, &end, text, -1, tag, NULL);
+    else
+        gtk_text_buffer_insert(b, &end, text, -1);
+}
+
+static void info_field(GtkTextBuffer *b, const char *label, const char *value)
+{
+    char *l;
+
+    if (!value || !*value)
+        return;
+    l = g_strdup_printf("%s: ", label);
+    info_insert(b, l, "label");
+    info_insert(b, value, NULL);
+    info_insert(b, "\n", NULL);
+    g_free(l);
+}
+
+/* Help > About the module: what Details says, with Comments as rich text. */
+static void cmd_module_info(KsWin *w)
+{
+    static const struct { const char *key, *label; } fields[] = {
+        { "description", N_("Description") }, { "abbreviation", N_("Abbreviation") },
+        { "language", N_("Language") },       { "version", N_("Version") },
+        { "versiondate", N_("Version date") }, { "publishdate", N_("Published") },
+        { "publisher", N_("Publisher") },     { "author", N_("Author") },
+        { "creator", N_("Creator") },         { "source", N_("Source") },
+    };
+    KsModule *m = w->mod;
+    GHashTable *d;
+    GtkWidget *dlg, *sw, *tv;
+    GtkTextBuffer *b;
+    InfoText it;
+    GString *contents;
+    int books = 0;
+    const char *comments, *editorial;
+
+    if (!m)
+        return;
+    d = ks_module_details(m);
+    if (!d)
+        d = g_hash_table_new(g_str_hash, g_str_equal);
+
+    dlg = gtk_dialog_new_with_buttons(_("About the module"), GTK_WINDOW(w->win), GTK_DIALOG_DESTROY_WITH_PARENT,
+                                      GTK_STOCK_CLOSE, GTK_RESPONSE_CLOSE, NULL);
+    gtk_window_set_default_size(GTK_WINDOW(dlg), 560, 520);
+    tv = gtk_text_view_new();
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(tv), FALSE);
+    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(tv), FALSE);
+    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(tv), GTK_WRAP_WORD_CHAR);
+    gtk_text_view_set_left_margin(GTK_TEXT_VIEW(tv), 10);
+    gtk_text_view_set_right_margin(GTK_TEXT_VIEW(tv), 10);
+    gtk_text_view_set_pixels_below_lines(GTK_TEXT_VIEW(tv), 2);
+    b = gtk_text_view_get_buffer(GTK_TEXT_VIEW(tv));
+    gtk_text_buffer_create_tag(b, "title", "weight", PANGO_WEIGHT_BOLD, "scale", PANGO_SCALE_X_LARGE,
+                               "pixels-above-lines", 8, "pixels-below-lines", 8, NULL);
+    gtk_text_buffer_create_tag(b, "label", "weight", PANGO_WEIGHT_BOLD, NULL);
+    it.b = b;
+    it.tags[0] = gtk_text_buffer_create_tag(b, NULL, "weight", PANGO_WEIGHT_BOLD, NULL);
+    it.tags[1] = gtk_text_buffer_create_tag(b, NULL, "style", PANGO_STYLE_ITALIC, NULL);
+    it.tags[2] = gtk_text_buffer_create_tag(b, NULL, "underline", PANGO_UNDERLINE_SINGLE, NULL);
+    it.tags[3] = gtk_text_buffer_create_tag(b, NULL, "rise", 5 * PANGO_SCALE, "scale", PANGO_SCALE_SMALL, NULL);
+    it.tags[4] = gtk_text_buffer_create_tag(b, NULL, "rise", -3 * PANGO_SCALE, "scale", PANGO_SCALE_SMALL, NULL);
+    it.tags[5] = gtk_text_buffer_create_tag(b, NULL, "scale", PANGO_SCALE_LARGE, NULL);
+    it.tags[6] = gtk_text_buffer_create_tag(b, NULL, "foreground", "#3b78c4", NULL);
+
+    info_insert(b, m->title, "title");
+    info_insert(b, "\n", NULL);
+    for (size_t i = 0; i < G_N_ELEMENTS(fields); i++) {
+        const char *v = g_hash_table_lookup(d, fields[i].key);
+
+        char *date = NULL;
+
+        if (strcmp(fields[i].key, "description") == 0 && v && strcmp(v, m->title) == 0)
+            continue;
+        /* "2013-11-07 00:00:00": dates stored as timestamps. */
+        if (v && g_str_has_suffix(v, " 00:00:00"))
+            v = date = g_strndup(v, strlen(v) - 9);
+        info_field(b, _(fields[i].label), v);
+        g_free(date);
+    }
+
+    contents = g_string_new(NULL);
+    for (int i = 1; i <= KS_MAX_BOOK; i++)
+        books += m->nchapters[i] != 0;
+    if (books)
+        g_string_append_printf(contents, ngettext("%d book", "%d books", books), books);
+    if (m->strong)
+        g_string_append_printf(contents, "%s%s", contents->len ? ", " : "", _("Strong's numbers"));
+    if (m->rtl)
+        g_string_append_printf(contents, "%s%s", contents->len ? ", " : "", _("right to left"));
+    if (m->rules)
+        g_string_append_printf(contents, "%s%s", contents->len ? ", " : "", _("verse rules"));
+    info_field(b, _("Contents"), contents->str);
+    g_string_free(contents, TRUE);
+    info_field(b, _("File"), m->path);
+
+    comments = g_hash_table_lookup(d, "comments");
+    editorial = g_hash_table_lookup(d, "editorialcomments");
+    if (comments) {
+        info_insert(b, "\n", NULL);
+        ks_html_parse(comments, info_html_cb, &it);
+        info_insert(b, "\n", NULL);
+    }
+    if (editorial) {
+        info_insert(b, "\n", NULL);
+        info_insert(b, _("Editorial comments"), "label");
+        info_insert(b, "\n", NULL);
+        ks_html_parse(editorial, info_html_cb, &it);
+    }
+    g_hash_table_destroy(d);
+
+    sw = gtk_scrolled_window_new(NULL, NULL);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(sw), GTK_SHADOW_IN);
+    gtk_container_set_border_width(GTK_CONTAINER(sw), 6);
+    gtk_container_add(GTK_CONTAINER(sw), tv);
+    gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(dlg))), sw, TRUE, TRUE, 0);
+    gtk_widget_show_all(sw);
+    gtk_dialog_run(GTK_DIALOG(dlg));
+    gtk_widget_destroy(dlg);
+}
+
 /* ---- building ------------------------------------------------------------- */
 
 static GtkWidget *menu_item(GtkWidget *menu, GtkAccelGroup *ag, const char *label, guint key,
@@ -565,6 +718,7 @@ static GtkWidget *build_menus(KsWin *w, GtkAccelGroup *ag)
     menu_item(m, ag, _("_Go to reference…"), GDK_KEY_l, GDK_CONTROL_MASK, cmd_goto, w);
 
     m = submenu(bar, _("_Help"));
+    w->info_item = menu_item(m, ag, _("About the _module…"), 0, 0, cmd_module_info, w);
     menu_item(m, ag, _("_About"), 0, 0, cmd_about, w);
     return bar;
 }

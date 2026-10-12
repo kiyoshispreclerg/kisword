@@ -386,7 +386,13 @@ janela. Gravado ao fechar e ao trocar módulo; nunca a cada clique.
     `display:block/none`, para `.c`, `a.c` e elementos próprios (`<gloss>`).
   - `<a class='strong' href='sG3056'>` (o que as regras fazem dos `<WG…>`) volta a ser
     número Strong clicável; `<a class='morph'>`, morfologia.
-- "Sobre o módulo" com `Comments`/`EditorialComments`.
+- "Sobre o módulo" com `Comments`/`EditorialComments`. **Feito** (Ajuda → Sobre o
+  módulo): campos do `Details` lidos na hora (`ks_module_details`, funciona também em
+  módulo criptografado) e o HTML dos comentários convertido por `html.c` para texto com
+  estilos num `GtkTextView`. O HTML real é de página web (tabelas, `<FONT SIZE=7>`,
+  `<style>`, quebras de linha no fonte, até 70 KB), por isso um conversor próprio, que
+  colapsa espaços como um navegador, em vez do parser de versos. As entidades HTML
+  (`&copy;`, `&eacute;`, …) passaram a ser compartilhadas com o parser de versos.
 
 ## 8. Empacotamento
 

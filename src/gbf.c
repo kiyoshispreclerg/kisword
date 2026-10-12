@@ -1,6 +1,8 @@
 /* gbf.c - parser for the tags inside MySword verse text (see gbf.h). */
 #include "gbf.h"
 
+#include "html.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -32,46 +34,6 @@ static void emit(Parser *ps, KsSpanKind kind, const char *text, int len)
     if (kind == KS_SPAN_TEXT && len <= 0)
         return;
     ps->cb(&sp, ps->data);
-}
-
-/* "&amp;" -> "&" into out; returns the bytes consumed, 0 if p is not a
- * recognized entity (it is then plain text). */
-static int entity(const char *p, char out[8])
-{
-    static const struct { const char *name; gunichar c; } named[] = {
-        { "amp", '&' }, { "lt", '<' }, { "gt", '>' }, { "quot", '"' },
-        { "apos", '\'' }, { "nbsp", 0x00A0 },
-    };
-    const char *semi = NULL;
-    gunichar c = 0;
-    int n;
-
-    for (int i = 1; i < 12 && p[i]; i++) {
-        if (p[i] == ';') {
-            semi = p + i;
-            break;
-        }
-    }
-    if (!semi)
-        return 0;
-    n = semi - (p + 1);
-    if (p[1] == '#') {
-        gboolean hex = p[2] == 'x' || p[2] == 'X';
-        const char *digits = p + (hex ? 3 : 2);
-        char *end;
-
-        c = (gunichar)strtoul(digits, &end, hex ? 16 : 10);
-        if (end != semi || end == digits)
-            return 0;
-    } else {
-        for (size_t i = 0; i < G_N_ELEMENTS(named); i++)
-            if ((int)strlen(named[i].name) == n && strncmp(p + 1, named[i].name, n) == 0)
-                c = named[i].c;
-    }
-    if (c == 0 || !g_unichar_validate(c))
-        return 0;
-    out[g_unichar_to_utf8(c, out)] = '\0';
-    return semi - p + 1;
 }
 
 /* Content tags (<RF>...<Rf>, <v>...</v>): emits the span and returns where
@@ -428,7 +390,7 @@ void ks_gbf_parse(const char *s, const KsStyleSheet *css, KsSpanCb cb, void *dat
 
         if (*p == '&') {
             char buf[8];
-            int n = entity(p, buf);
+            int n = ks_html_entity(p, buf);
 
             if (n) {
                 emit(&ps, KS_SPAN_TEXT, text, p - text);
