@@ -423,6 +423,44 @@ janela. Gravado ao fechar e ao trocar módulo; nunca a cada clique.
   colapsa espaços como um navegador, em vez do parser de versos. As entidades HTML
   (`&copy;`, `&eacute;`, …) passaram a ser compartilhadas com o parser de versos.
 
+### 7.1 Compatibilidade com os módulos reais (2026-10-12)
+
+Testados os 125 `*.bbl.mybible` de `interno/bibles/` (a coleção usada no MySword):
+**123 abrem sem nenhuma tag desconhecida**, 2 são criptografados (`abp`, `HiSB`, ambos
+`encryption=2`), nenhum falha ao abrir. Antes dos ajustes abaixo eram 61 limpos.
+
+O que foi preciso, com o módulo onde apareceu:
+
+- `<TS1>`, `<TS3>` (níveis de título) e `<Ts>` encerrando a linha: ~25 módulos da SIL
+  (adj, bqj, nko, xav, …) tinham o título colado ao verso.
+- `<CI>` (linha de poesia), `<CLX>` (Aleppo), `<CCM>`; `<H8804>`/`<G5713>` (códigos TVM
+  do Strong → morfologia, ARA+STRONG); `<r>20:43</r>` (verso fundido, ALM21).
+- Interlineares `<Q> <H>/<G>original <X>transliteração <E>/<T>glosa <q>`: glosa e
+  transliteração menores, depois da palavra, separadas por espaço (antes saíam coladas);
+  quebras de linha dentro do bloco viram espaço (BHSE).
+- HTML: `<s>` (tachado, LTT2009 — só se houver `</s>`, porque `<s>` também fecha `<S>`),
+  `<small>`/`<font size=-1>` (o "SENHOR" em versalete da ARC2009), `<is>`/`<salmo>`
+  (sobrescrito dos salmos, itálico em linha própria).
+- `<RX 43.1.1-5>`: referência cruzada visível ("Jo 1:1-5", com "; " entre várias).
+- `RightToLeftOT`/`RightToLeftNT` no `Details` (HGPD, berean-interlinear): direção por
+  testamento.
+- Ignoradas sem aviso (marcadores sem conteúdo): âncoras `<v=Gen.1.1>`, `<ref=01.1.1>`,
+  `<heb>`, `<rtl>`, `<wt>`, `<NB>`, sobras de regras (`<hide>`, `<GES.…>`) etc.
+- nko usa `<…>` como aspas (`<Ɔlɛpʋ́.>`): "tag" com letra não ASCII, pontuação final ou
+  que é uma palavra capitalizada (`<Yohane>`) é texto.
+- Texto: `\r`/`\n` gravados no verso são espaço (ACF terminava todo verso em `\r`),
+  BOM no início do verso é descartado (ARC2009), títulos de módulo em uma linha.
+
+Limites que ficam:
+
+- Interlineares hebraicos (OpenHB, ETCBC, BHSE*) e os de anotação linguística
+  (OpenGNTOTLA, OpenHB-LA) dependem do layout HTML do MySword — cada palavra é uma
+  coluna `inline-block` com várias linhas. Aqui ficam completos mas densos, em linha
+  corrida; com F9 (sem Strong) melhoram. Empilhar exigiria outro widget.
+- Os gregos interlineares (berean-interlinear, ACV, OpenGNT*) e os demais ficam bem.
+- BHSE/BHSEk custam ~0,4 ms por verso nas regras: ~10 ms por capítulo, ~10 s para
+  indexar a busca (em segundo plano).
+
 ## 8. Empacotamento
 
 `.deb` no mesmo esquema do KiDesktop (`scripts/build-deb.sh`), `.desktop` e ícone. Pacote

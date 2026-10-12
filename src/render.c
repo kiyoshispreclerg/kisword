@@ -19,6 +19,7 @@
 #define LINK_COLOR "#3b78c4"
 #define RED_COLOR "#cc2222"
 #define OTQUOTE_COLOR "#1f7a5c"
+#define GLOSS_COLOR "#4a6fa5"
 
 typedef struct {
     int verse;
@@ -38,7 +39,7 @@ struct KsView {
     GtkTextTagTable *table;
     GtkTextTag *t_hl, *t_indent[KS_MAX_INDENT + 1], *t_verse, *t_italic, *t_bold, *t_underline,
         *t_red, *t_otquote, *t_sup, *t_sub, *t_title, *t_strong, *t_note, *t_label, *t_group, *t_rtl,
-        *t_ltr, *t_absent;
+        *t_ltr, *t_absent, *t_strike, *t_small, *t_gloss, *t_translit, *t_xref;
     GdkCursor *hand, *ibeam;
     gboolean over_link;
     KsViewOptions opt;
@@ -63,6 +64,8 @@ typedef struct {
     gboolean num_pending;
     gboolean in_title;
     gboolean prev_strong;
+    gboolean prev_xref;
+    gboolean xref_space; /* whitespace after a cross reference, held back */
     int verse;
     int note_seq;
 } Render;
@@ -85,6 +88,7 @@ static void put(Render *r, const char *t, int len, GtkTextTag **tags, int ntags)
     }
     r->line_start = t[len - 1] == '\n';
     r->prev_strong = FALSE;
+    r->prev_xref = FALSE;
 }
 
 static void newline(Render *r)
@@ -136,6 +140,14 @@ static int style_tags(Render *r, const KsSpan *sp, GtkTextTag **out)
         out[n++] = v->t_sub;
     if (st & KS_ST_TITLE)
         out[n++] = v->t_title;
+    if (st & KS_ST_STRIKE)
+        out[n++] = v->t_strike;
+    if (st & KS_ST_SMALL)
+        out[n++] = v->t_small;
+    if (st & KS_ST_GLOSS)
+        out[n++] = v->t_gloss;
+    if (st & KS_ST_TRANSLIT)
+        out[n++] = v->t_translit;
     if (sp->color)
         out[n++] = color_tag(v, sp->color);
     return n;
@@ -154,6 +166,11 @@ static void ensure_num(Render *r)
     r->num_pending = FALSE;
     n = g_snprintf(buf, sizeof buf, "%d ", r->verse);
     put(r, buf, n, tags, r->para ? 2 : 1);
+}
+
+static gboolean title_edge_pending(const Render *r, gboolean title)
+{
+    return title != r->in_title;
 }
 
 static void title_edge(Render *r, gboolean title)
@@ -185,6 +202,14 @@ static void span_cb(const KsSpan *sp, void *data)
         const char *t = sp->text;
         int len = sp->len;
 
+        /* "<RX a> <RX b>": the space only matters if no reference follows. */
+        if (r->prev_xref && strspn(t, " ") >= (size_t)len) {
+            r->xref_space = TRUE;
+            break;
+        }
+        if (r->xref_space && !title_edge_pending(r, title))
+            put(r, " ", 1, NULL, 0);
+        r->xref_space = FALSE;
         title_edge(r, title);
         if (r->line_start || (!title && r->num_pending)) {
             while (len > 0 && (*t == ' ' || *t == '\t')) {
@@ -244,6 +269,28 @@ static void span_cb(const KsSpan *sp, void *data)
     case KS_SPAN_LINE:
         newline(r);
         break;
+    case KS_SPAN_XREF: {
+        /* "43.1.1-5" -> "Jo 1:1-5"; several in a row get a "; " between. */
+        char buf[48], *ref;
+        int b, c, v1, v2 = 0, got;
+        int n;
+
+        title_edge(r, title);
+        if (!title)
+            ensure_num(r);
+        g_snprintf(buf, sizeof buf, "%.*s", sp->len, sp->text);
+        got = sscanf(buf, "%d.%d.%d-%d", &b, &c, &v1, &v2);
+        ref = got >= 3 && b >= 1 && b <= KS_MAX_BOOK ? ks_ref_format(b, c, v1, got == 4 ? v2 : 0) : g_strdup(buf);
+        n = style_tags(r, sp, tags);
+        tags[n++] = v->t_xref;
+        if (r->prev_xref)
+            put(r, "; ", 2, tags, n);
+        r->xref_space = FALSE;
+        put(r, ref, strlen(ref), tags, n);
+        r->prev_xref = TRUE;
+        g_free(ref);
+        break;
+    }
     case KS_SPAN_MORPH:
     case KS_SPAN_UNKNOWN:
         break;
@@ -296,7 +343,7 @@ static void render(KsView *v, int scroll_verse)
 
             /* An RLM first: Pango takes a paragraph's direction from its
              * first strong character, and the label is Latin. */
-            if (m->rtl)
+            if (ks_module_rtl(m, v->book))
                 put(&r, "\xe2\x80\x8f", 3, NULL, 0);
             put(&r, ks_module_label(m), strlen(ks_module_label(m)), tags, 1);
             put(&r, " ", 1, NULL, 0);
@@ -317,7 +364,7 @@ static void render(KsView *v, int scroll_verse)
             GtkTextIter a, z;
 
             gtk_text_buffer_get_iter_at_offset(b, &a, kv->start);
-            gtk_text_buffer_apply_tag(b, m->rtl ? v->t_rtl : v->t_ltr, &a, &r.it);
+            gtk_text_buffer_apply_tag(b, ks_module_rtl(m, v->book) ? v->t_rtl : v->t_ltr, &a, &r.it);
             if (group && i > 0) {
                 z = a;
                 gtk_text_iter_forward_to_line_end(&z);
@@ -639,6 +686,7 @@ static void style_set_cb(GtkWidget *w, GtkStyle *prev, KsView *v)
     g_object_set(v->t_verse, "foreground-gdk", &dim, NULL);
     g_object_set(v->t_label, "foreground-gdk", &dim, NULL);
     g_object_set(v->t_absent, "foreground-gdk", &dim, NULL);
+    g_object_set(v->t_translit, "foreground-gdk", &dim, NULL);
     g_object_set(v->t_hl, "background-gdk", &hl, NULL);
 }
 
@@ -694,6 +742,12 @@ KsView *ks_view_new(const KsViewOptions *opt)
     v->t_rtl = new_tag(v, "rtl", "direction", GTK_TEXT_DIR_RTL, NULL);
     v->t_ltr = new_tag(v, "ltr", "direction", GTK_TEXT_DIR_LTR, NULL);
     v->t_absent = new_tag(v, "absent", "style", PANGO_STYLE_ITALIC, NULL);
+    v->t_strike = new_tag(v, "strike", "strikethrough", TRUE, NULL);
+    v->t_small = new_tag(v, "small", "scale", PANGO_SCALE_SMALL, NULL);
+    v->t_gloss = new_tag(v, "gloss", "scale", PANGO_SCALE_SMALL, "foreground", GLOSS_COLOR, NULL);
+    v->t_translit = new_tag(v, "translit", "scale", PANGO_SCALE_SMALL, "style", PANGO_STYLE_ITALIC, NULL);
+    v->t_xref = new_tag(v, "xref", "foreground", LINK_COLOR, "scale", PANGO_SCALE_SMALL, "weight",
+                        PANGO_WEIGHT_NORMAL, NULL);
 
     b = gtk_text_buffer_new(v->table);
     v->text = gtk_text_view_new_with_buffer(b);
@@ -779,7 +833,8 @@ void ks_view_show(KsView *v, KsModule *const *mods, int nmods, int book, int cha
     v->hl_from = hl_from;
     v->hl_to = hl_to;
     /* Interleaved: the direction goes per line, with tags. */
-    gtk_widget_set_direction(v->text, v->nmods == 1 && v->mod->rtl ? GTK_TEXT_DIR_RTL : GTK_TEXT_DIR_LTR);
+    gtk_widget_set_direction(v->text, v->nmods == 1 && ks_module_rtl(v->mod, book) ? GTK_TEXT_DIR_RTL
+                                                                                  : GTK_TEXT_DIR_LTR);
     for (int i = 0; i < v->nmods; i++) {
         Collect c = { v, i };
 

@@ -930,7 +930,7 @@ static void cmd_module_info(KsWin *w)
         g_string_append_printf(contents, ngettext("%d book", "%d books", books), books);
     if (m->strong)
         g_string_append_printf(contents, "%s%s", contents->len ? ", " : "", _("Strong's numbers"));
-    if (m->rtl)
+    if (m->rtl || m->rtl_ot > 0 || m->rtl_nt > 0)
         g_string_append_printf(contents, "%s%s", contents->len ? ", " : "", _("right to left"));
     if (m->rules)
         g_string_append_printf(contents, "%s%s", contents->len ? ", " : "", _("verse rules"));

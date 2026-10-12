@@ -81,6 +81,10 @@ static void read_details(KsModule *m, sqlite3 *db, int *encryption, int *compres
                 m->custom_css = col_text(st, i);
             else if (col_is(st, i, "RightToLeft"))
                 m->rtl = col_bool(st, i);
+            else if (col_is(st, i, "RightToLeftOT"))
+                m->rtl_ot = col_bool(st, i);
+            else if (col_is(st, i, "RightToLeftNT"))
+                m->rtl_nt = col_bool(st, i);
             else if (col_is(st, i, "OT"))
                 m->ot = col_bool(st, i);
             else if (col_is(st, i, "NT"))
@@ -157,6 +161,7 @@ KsModule *ks_module_probe(const char *path, GError **err)
     if (!m->real)
         m->real = g_strdup(path);
     m->supported = TRUE;
+    m->rtl_ot = m->rtl_nt = -1;
 
     read_details(m, db, &encryption, &compressed, &description);
     sqlite3_close(db);
@@ -224,6 +229,13 @@ void ks_module_free(KsModule *m)
     g_free(m->custom_css);
     g_free(m->unsupported_why);
     g_free(m);
+}
+
+gboolean ks_module_rtl(const KsModule *m, int book)
+{
+    int t = book >= 40 && book <= 66 ? m->rtl_nt : m->rtl_ot;
+
+    return t >= 0 ? t : m->rtl;
 }
 
 const char *ks_module_label(const KsModule *m)

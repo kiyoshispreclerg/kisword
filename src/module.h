@@ -23,6 +23,7 @@ typedef struct {
     char *verse_rules;     /* Details.VerseRules, NULL if absent */
     char *custom_css;      /* Details.CustomCSS, NULL if absent */
     gboolean rtl, ot, nt, strong;
+    int rtl_ot, rtl_nt;    /* RightToLeftOT/NT (-1: absent), for modules mixing both */
 
     gboolean supported;    /* FALSE: encrypted/compressed/binary text */
     char *unsupported_why; /* translated reason when !supported */
@@ -51,6 +52,9 @@ GPtrArray *ks_module_scan(const char *const *dirs, const char *const *files);
  * UTF-8), read from the file now; works on unsupported modules too. NULL
  * if the file can't be read. */
 GHashTable *ks_module_details(const KsModule *m);
+
+/* Whether that book reads right to left. */
+gboolean ks_module_rtl(const KsModule *m, int book);
 
 /* Abbreviation, or the title if there is none. */
 const char *ks_module_label(const KsModule *m);

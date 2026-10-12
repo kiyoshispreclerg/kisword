@@ -24,6 +24,7 @@ typedef enum {
     KS_SPAN_PARA,     /* <CM>, </p>: end of paragraph */
     KS_SPAN_LINE,     /* <CL>, <br>: line break */
     KS_SPAN_UNKNOWN,  /* tag not understood; text = the tag name */
+    KS_SPAN_XREF,     /* <RX 43.1.1-5>: cross reference; text = "43.1.1-5" */
 } KsSpanKind;
 
 enum {
@@ -36,6 +37,10 @@ enum {
     KS_ST_SUB = 1 << 6,       /* <sub> */
     KS_ST_TITLE = 1 << 7,     /* <TS>...<Ts> */
     KS_ST_HIDDEN = 1 << 8,    /* class with display:none */
+    KS_ST_STRIKE = 1 << 9,    /* <s>, <strike>, <del> */
+    KS_ST_SMALL = 1 << 10,    /* <small>, <font size=-1> */
+    KS_ST_GLOSS = 1 << 11,    /* interlinear <E>/<T>: translation of the word */
+    KS_ST_TRANSLIT = 1 << 12, /* interlinear <X>: transliteration or lexeme */
 };
 
 /* What a class (<span class='x'>) or a custom element (<gloss>) does. */

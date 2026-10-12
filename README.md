@@ -43,6 +43,13 @@ but a separate program; it may end up in a future `kidesktop-extras`.
 Not yet: dictionaries and commentaries (see
 [KISWORD_PLAN.md](KISWORD_PLAN.md)).
 
+Tested against a collection of 125 MySword Bibles: all open, and all but
+the two encrypted ones parse without unknown tags — titles, poetry lines,
+interlinears, cross references, the HTML that VerseRules produce, modules
+mixing right-to-left and left-to-right testaments. Interlinears built for
+MySword's stacked HTML layout (word over gloss over morphology) are shown in
+running text: complete, but dense.
+
 **Encrypted modules are not supported.** Some MySword modules (for example the
 ones with `encryption` set in their `Details` table) are protected by MySword
 itself; kisword lists them greyed out and explains why, and does not try to get

@@ -10,8 +10,8 @@ static int failures;
 /* One token per span: kind letter, {style flags}, @indent, (mark), 'text'. */
 static void ser(const KsSpan *sp, void *data)
 {
-    static const char kinds[] = "TSMNVPLU";
-    static const char flags[] = "iroubp_th";
+    static const char kinds[] = "TSMNVPLUX";
+    static const char flags[] = "iroubp_thkmgx";
     GString *g = data;
 
     if (g->len)
@@ -78,7 +78,7 @@ int main(void)
 
     /* OT quotation, section title, line break, indent. */
     expect("<FO>Behold<Fo><WG2400>", "T{o}'Behold' S'G2400'");
-    expect("<TS>The Title<Ts>Text", "T{t}'The Title' T'Text'");
+    expect("<TS>The Title<Ts>Text", "T{t}'The Title' L{t} T'Text'");
     expect("<PI2>one<CL>two<CM>three", "T@2'one' L@2 T@2'two' P@2 T'three'");
 
     /* Merged verse marker from the RVP (1Sm 17:58). */
@@ -107,6 +107,31 @@ int main(void)
            "T'logos ' S'G3056' T' ' M'N-NSM'");
     expect("<a href='sG26|m$4|d-BIB 26'>love</a>", "T'love' S'G26'"); /* word linked to a number */
     expect("<a class='d' href='d-OGNTd 1'>Βίβλος</a>", "T'Βίβλος'");
+
+    /* Tags from the modules in the wild. Title levels and poetry lines (adj, MelanesianPidgin). */
+    expect("<TS1>Title<Ts><TS3>Sub<Ts>a,<CI><PF1><PI3>b<CLX>c<CCM>",
+           "T{t}'Title' L{t} T{t}'Sub' L{t} T'a,' L T@3'b' L@3 T@3'c'");
+    /* Interlinear blocks (OpenHB, ACV). */
+    expect("<Q><H>בְּ<WH9003><h><X>bĕ<x><E>in<e><q> <Q><H>רֵאשִׁ֖ית<h><E>beginning<e><q>",
+           "T'בְּ' S'H9003' T' ' T{x}'bĕ' T' ' T{g}'in' T' ' T'רֵאשִׁ֖ית' T' ' T{g}'beginning'");
+    expect("<Q>IN<WG1722><WTPREP><E><G>εν<g><e><q>", "T'IN' S'G1722' M'PREP' T' ' T{g}'εν'");
+    expect("a <E> In <e>", "T'a ' T{g}' In '"); /* already spaced */
+    /* TVM codes, merged verse, strike, small caps by hand, superscriptions. */
+    expect("era<WG2258><G5713> o", "T'era' S'G2258' M'G5713' T' o'");
+    expect("para sempre. <r>20:43</r>Então", "T'para sempre. ' V'20:43' T'Então'");
+    expect("<r>x", "T'x'"); /* no </r>: ignored */
+    expect("que<NB> <i><s>(tudo)</s></i><Nb>", "T'que' T' ' T{ik}'(tudo)'");
+    expect("<S>x<s>y", "U'S' T'x' U's' T'y'"); /* <s> without </s> is not a strike */
+    expect("o <nd>S<font size=-1>ENHOR</font></nd> Deus", "T'o ' T'S' T{m}'ENHOR' T' Deus'");
+    expect("<is>Salmo de Davi</is><v=Ps.3.1>SENHOR", "T{i}'Salmo de Davi' L T'SENHOR'");
+    /* Anchors and markers that show nothing; a byte order mark. */
+    expect("\xef\xbb\xbf<TS>T<Ts><ref=01.1.1> <rtl>a</rtl><wt>b<@@@><v21>", "T{t}'T' L{t} T' ' T'a' T'b'");
+    /* Cross references (berean-bsb), line breaks inside an interlinear word (BHSE). */
+    expect("<TS>The Creation<br><em><RX 43.1.1-5><RX 58.11.1-3></em><Ts>",
+           "T{t}'The Creation' L{t} X{it}'43.1.1-5' X{it}'58.11.1-3' L{t}");
+    expect("<Q>a<br>b<br> c<q><br>d", "T'a' T' ' T'b' T' ' T' c' L T'd'");
+    /* Angle brackets as quotation marks (Nkonya). */
+    expect("asɩ gyí, <Ɔlɛpʋ́.>) Tsú <Yohane> <Ɔhakpan!>", "T'asɩ gyí, ' T'<Ɔlɛpʋ́.>' T') Tsú ' T'<Yohane>' T' ' T'<Ɔhakpan!>'");
 
     expect_plain("In the beginning<WH7225> God<WH430> created<WH1254><WH853> the heaven.",
                  "In the beginning God created the heaven.");
