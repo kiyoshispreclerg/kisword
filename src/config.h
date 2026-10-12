@@ -19,6 +19,15 @@ typedef struct {
     gboolean show_strong, show_notes, red_letters, paragraphs;
     gboolean stacked;     /* interlinears and annotated modules laid out in boxes */
     int width, height;
+
+    /* The study panel: commentaries, dictionaries, books, journals (in
+     * KsResKind order). */
+    gboolean study;        /* shown */
+    int study_tab;         /* KsResKind of the tab in front */
+    int study_width;
+    char *res_module[4];   /* path of the module chosen in each tab */
+    char *res_key[4];      /* the word, or the entry, shown in each tab */
+    char *strong_dict;     /* path of the dictionary preferred for Strong's numbers */
 } KsConfig;
 
 KsConfig *ks_config_load(void);

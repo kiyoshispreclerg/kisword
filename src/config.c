@@ -6,6 +6,9 @@
 
 #define GROUP "kisword"
 
+/* "<name>_module", "<name>_entry": the study panel's tabs. */
+static const char *const res_names[4] = { "commentary", "dictionary", "book", "journal" };
+
 static char *config_path(void)
 {
     return g_build_filename(g_get_user_config_dir(), "kisword", "kisword.conf", NULL);
@@ -82,6 +85,9 @@ KsConfig *ks_config_load(void)
     c->stacked = TRUE;
     c->width = 760;
     c->height = 680;
+    c->study = TRUE;
+    c->study_tab = 1;
+    c->study_width = 380;
 
     if (g_key_file_load_from_file(kf, path, G_KEY_FILE_NONE, NULL)) {
         get_list(kf, "modules_dirs", &c->modules_dirs);
@@ -102,7 +108,20 @@ KsConfig *ks_config_load(void)
         get_bool(kf, "stacked", &c->stacked);
         get_int(kf, "width", &c->width);
         get_int(kf, "height", &c->height);
+        get_bool(kf, "study", &c->study);
+        get_int(kf, "study_tab", &c->study_tab);
+        get_int(kf, "study_width", &c->study_width);
+        get_str(kf, "strong_dictionary", &c->strong_dict);
+        for (int i = 0; i < 4; i++) {
+            char *mod = g_strconcat(res_names[i], "_module", NULL), *key = g_strconcat(res_names[i], "_entry", NULL);
+
+            get_str(kf, mod, &c->res_module[i]);
+            get_str(kf, key, &c->res_key[i]);
+            g_free(key);
+            g_free(mod);
+        }
     }
+    c->study_tab = CLAMP(c->study_tab, 0, 3);
     g_key_file_free(kf);
     g_free(path);
     return c;
@@ -138,6 +157,18 @@ void ks_config_save(const KsConfig *c)
     g_key_file_set_boolean(kf, GROUP, "stacked", c->stacked);
     g_key_file_set_integer(kf, GROUP, "width", c->width);
     g_key_file_set_integer(kf, GROUP, "height", c->height);
+    g_key_file_set_boolean(kf, GROUP, "study", c->study);
+    g_key_file_set_integer(kf, GROUP, "study_tab", c->study_tab);
+    g_key_file_set_integer(kf, GROUP, "study_width", c->study_width);
+    g_key_file_set_string(kf, GROUP, "strong_dictionary", c->strong_dict ? c->strong_dict : "");
+    for (int i = 0; i < 4; i++) {
+        char *mod = g_strconcat(res_names[i], "_module", NULL), *key = g_strconcat(res_names[i], "_entry", NULL);
+
+        g_key_file_set_string(kf, GROUP, mod, c->res_module[i] ? c->res_module[i] : "");
+        g_key_file_set_string(kf, GROUP, key, c->res_key[i] ? c->res_key[i] : "");
+        g_free(key);
+        g_free(mod);
+    }
 
     data = g_key_file_to_data(kf, &len, NULL);
     g_mkdir_with_parents(dir, 0755);
@@ -159,6 +190,11 @@ void ks_config_free(KsConfig *c)
     g_free(c->module);
     g_free(c->font);
     g_free(c->book_names);
+    g_free(c->strong_dict);
+    for (int i = 0; i < 4; i++) {
+        g_free(c->res_module[i]);
+        g_free(c->res_key[i]);
+    }
     g_free(c);
 }
 

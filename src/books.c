@@ -85,8 +85,8 @@ static const KsBookName books_en[KS_NBOOKS] = {
     { "Numbers", "Num", NULL },
     { "Deuteronomy", "Deut", NULL },
     { "Joshua", "Josh", NULL },
-    { "Judges", "Judg", NULL },
-    { "Ruth", "Ruth", NULL },
+    { "Judges", "Judg", "Jdg" },
+    { "Ruth", "Ruth", "Rth" },
     { "1 Samuel", "1Sam", NULL },
     { "2 Samuel", "2Sam", NULL },
     { "1 Kings", "1Kgs", NULL },
@@ -100,11 +100,11 @@ static const KsBookName books_en[KS_NBOOKS] = {
     { "Psalms", "Ps", "Psalm|Psa" },
     { "Proverbs", "Prov", NULL },
     { "Ecclesiastes", "Eccl", NULL },
-    { "Song of Solomon", "Song", "Song of Songs" },
+    { "Song of Solomon", "Song", "Song of Songs|SoS|Sng" },
     { "Isaiah", "Isa", NULL },
     { "Jeremiah", "Jer", NULL },
     { "Lamentations", "Lam", NULL },
-    { "Ezekiel", "Ezek", NULL },
+    { "Ezekiel", "Ezek", "Ezk" },
     { "Daniel", "Dan", NULL },
     { "Hosea", "Hos", NULL },
     { "Joel", "Joel", NULL },
@@ -118,9 +118,9 @@ static const KsBookName books_en[KS_NBOOKS] = {
     { "Haggai", "Hag", NULL },
     { "Zechariah", "Zech", NULL },
     { "Malachi", "Mal", NULL },
-    { "Matthew", "Matt", NULL },
-    { "Mark", "Mark", NULL },
-    { "Luke", "Luke", NULL },
+    { "Matthew", "Matt", "Mt" },
+    { "Mark", "Mark", "Mk|Mrk" },
+    { "Luke", "Luke", "Lk|Luk" },
     { "John", "John", "Jn|Jhn" },
     { "Acts", "Acts", NULL },
     { "Romans", "Rom", NULL },
@@ -128,23 +128,23 @@ static const KsBookName books_en[KS_NBOOKS] = {
     { "2 Corinthians", "2Cor", NULL },
     { "Galatians", "Gal", NULL },
     { "Ephesians", "Eph", NULL },
-    { "Philippians", "Phil", NULL },
+    { "Philippians", "Phil", "Php" },
     { "Colossians", "Col", NULL },
     { "1 Thessalonians", "1Thess", NULL },
     { "2 Thessalonians", "2Thess", NULL },
     { "1 Timothy", "1Tim", NULL },
     { "2 Timothy", "2Tim", NULL },
     { "Titus", "Titus", NULL },
-    { "Philemon", "Phlm", NULL },
+    { "Philemon", "Phlm", "Phm" },
     { "Hebrews", "Heb", NULL },
     { "James", "Jas", NULL },
     { "1 Peter", "1Pet", NULL },
     { "2 Peter", "2Pet", NULL },
-    { "1 John", "1John", NULL },
-    { "2 John", "2John", NULL },
-    { "3 John", "3John", NULL },
+    { "1 John", "1John", "1Jn|1Jhn" },
+    { "2 John", "2John", "2Jn|2Jhn" },
+    { "3 John", "3John", "3Jn|3Jhn" },
     { "Jude", "Jude", NULL },
-    { "Revelation", "Rev", NULL },
+    { "Revelation", "Rev", "Rv|Apocalypse" },
 };
 
 static const KsBookName *cur = books_en;
@@ -244,11 +244,11 @@ static gboolean book_matches(const KsBookName *b, const char *key, gboolean stri
 /* Three passes, each over the current language first and then the other:
  * exact with accents ("Jó" is Job, "Jo" is João), exact without accents
  * ("genesis"), and finally prefix of the full name ("mat", "apoc"). */
-int ks_book_lookup(const char *s, gssize len)
+static int lookup(const char *s, gssize len, const KsBookName *first, const KsBookName *second)
 {
     char *kc = ks_fold_key(s, len, FALSE);
     char *ks = ks_fold_key(s, len, TRUE);
-    const KsBookName *tabs[2] = { cur, other };
+    const KsBookName *tabs[2] = { first, second };
     gboolean has_letter = FALSE;
     int found = 0;
 
@@ -265,4 +265,14 @@ int ks_book_lookup(const char *s, gssize len)
     g_free(kc);
     g_free(ks);
     return found;
+}
+
+int ks_book_lookup(const char *s, gssize len)
+{
+    return lookup(s, len, cur, other);
+}
+
+int ks_book_lookup_en(const char *s, gssize len)
+{
+    return lookup(s, len, books_en, books_pt);
 }

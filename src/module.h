@@ -43,10 +43,24 @@ typedef struct {
 KsModule *ks_module_probe(const char *path, GError **err);
 void ks_module_free(KsModule *m);
 
-/* Probes every *.bbl.mybible in dirs plus the explicit files, skipping
- * duplicates and anything that isn't a Bible module, sorted by label.
- * Either list may be NULL. */
+/* Probes every *.bbl.mybible in dirs (see ks_scan_files()) plus the
+ * explicit files, skipping duplicates and anything that isn't a Bible
+ * module, sorted by label. Either list may be NULL. */
 GPtrArray *ks_module_scan(const char *const *dirs, const char *const *files);
+
+/* Calls cb for every *.mybible file in dirs, and in their subfolders named
+ * as MySword names them (bibles, commentaries, dictionaries, books,
+ * journals; also mysword/ and those inside it). */
+typedef void (*KsFileCb)(const char *path, void *data);
+void ks_scan_files(const char *const *dirs, KsFileCb cb, void *data);
+
+/* Shared with res.c: Details columns by name, as text (valid UTF-8,
+ * stripped, NULL if empty) or as a boolean ("1", "true", 1). */
+gboolean ks_col_is(sqlite3_stmt *st, int i, const char *name);
+char *ks_col_text(sqlite3_stmt *st, int i);
+gboolean ks_col_bool(sqlite3_stmt *st, int i);
+/* Keeps the first line of s, with whitespace runs as one space. */
+char *ks_one_line(char *s);
 
 /* Every non-empty text column of Details, lower-case name -> value (valid
  * UTF-8), read from the file now; works on unsupported modules too. NULL

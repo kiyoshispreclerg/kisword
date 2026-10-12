@@ -51,6 +51,16 @@ gboolean ks_view_get_anchor(KsView *v, int *verse, double *frac);
 void ks_view_set_anchor(KsView *v, int verse, double frac);
 GtkAdjustment *ks_view_vadjustment(KsView *v);
 
+/* Clicks in the text: on a Strong's number (TRUE: handled; FALSE: the
+ * view says no dictionary has it), and anywhere else on a verse. Either
+ * may be NULL. */
+typedef gboolean (*KsViewStrongCb)(const char *number, void *data);
+typedef void (*KsViewVerseCb)(int verse, void *data);
+void ks_view_set_callbacks(KsView *v, KsViewStrongCb strong, KsViewVerseCb verse, void *data);
+
+/* The selected text, without line breaks; NULL if nothing is selected. */
+char *ks_view_selection(KsView *v);
+
 /* Destroys the widget too. */
 void ks_view_free(KsView *v);
 

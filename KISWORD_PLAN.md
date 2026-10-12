@@ -481,10 +481,33 @@ do MySword em OHB Gn 1, BHSE Gn 1 e OGNTla Jo 1):
 `.deb` no mesmo esquema do KiDesktop (`scripts/build-deb.sh`), `.desktop` e ícone. Pacote
 próprio `kisword`; se surgir o `kidesktop-extras`, entra como dependência dele.
 
-## 9. Depois das Bíblias (fora do escopo atual)
+## 9. Fase 3 (0.3.0): comentários, dicionários, livros, diários
 
-- `.dct.mybible` (dicionários) → definição real no popup de Strong.
-- `.cmt.mybible` (comentários) → painel lateral sincronizado com o verso.
+**Feito** (`res.c`, `link.c`, `htmlview.c`, `studypane.c`), testado contra os 48
+módulos de `interno/{commentaries,dictionaries,books,journals}`: todos abrem e
+são lidos com `--check`, inclusive BHSE (472 mil verbetes, 8,6 milhões de links)
+e OpenHBd (517 mil).
+
+- Formatos: `dictionary(word, data[, relativeorder])` — e tabelas extras
+  `(chave, data)` como `ogntc`/`ogntl` no OpenGNTd —, `commentary(book,
+  chapter, fromverse, toverse, data)` (verso 0 = capítulo), `journal(id, title,
+  content[, relativeorder, hidden])` para livros e diários, imagens em
+  `data(id, filename, content)` ou `data:` base64 (AHLB).
+- `html.c` virou um renderizador com pilha de elementos: links, listas
+  numeradas (`type='a'`, romanos), classes do `CustomCSS`, `style=`, alinhamento,
+  recuo, imagens, âncoras; `<WH430>` e `<BDB.x>`/`<TWOT.x>` (HL) viram links.
+- Links (`link.c`): `b` Bíblia (`43.3.16`, `Gen 1:1`, `4.15.8.BHSE`, `B:290 23:5`
+  do MyBible, `I Timothy`), `s` Strong, `d`/`d-ABBR` dicionário (com âncora),
+  `m` morfologia, `c`, `j`/`k` livros, `p` imagem, `r` nota em popup, URLs.
+  Dicionário não achado no módulo nomeado cai no atual e depois em qualquer um.
+- Painel à direita, uma aba por tipo, preparada só quando mostrada (sem custo
+  com o painel fechado: +1 MB de RSS). Strong clicado: dicionário preferido
+  (o último de Strong escolhido), depois os de Strong, depois todos.
+- Detalhe do GTK2: link que troca a página é tratado num idle — a soltura do
+  botão ainda usa uma marca do buffer antigo (Gtk-CRITICAL).
+
+## 9.1 Depois
+
 - Backends MyBible (`verses`, livros 10/20/30…) e e-Sword `.bblx`, aproveitando que a
   interface de `module.c` já isola o formato.
 

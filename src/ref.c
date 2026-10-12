@@ -43,7 +43,7 @@ static gboolean is_dash(const char **pp)
     return FALSE;
 }
 
-gboolean ks_ref_parse(const char *s, KsRef *r)
+static gboolean parse(const char *s, KsRef *r, int (*book_lookup)(const char *, gssize))
 {
     const char *p, *name_end;
     gboolean has_name;
@@ -73,7 +73,7 @@ gboolean ks_ref_parse(const char *s, KsRef *r)
         name_end = p;
         while (name_end > s && (name_end[-1] == ' ' || name_end[-1] == '\t'))
             name_end--;
-        r->book = ks_book_lookup(s, name_end - s);
+        r->book = book_lookup(s, name_end - s);
         if (!r->book)
             return FALSE;
     }
@@ -116,6 +116,16 @@ gboolean ks_ref_parse(const char *s, KsRef *r)
     if (r->verse_end <= r->verse)
         r->verse_end = 0;
     return TRUE;
+}
+
+gboolean ks_ref_parse(const char *s, KsRef *r)
+{
+    return parse(s, r, ks_book_lookup);
+}
+
+gboolean ks_ref_parse_en(const char *s, KsRef *r)
+{
+    return parse(s, r, ks_book_lookup_en);
 }
 
 char *ks_ref_format(int book, int chapter, int verse, int verse_end)

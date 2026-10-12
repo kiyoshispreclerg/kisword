@@ -50,8 +50,18 @@ mas é um programa separado; pode vir a fazer parte de um futuro
 - Interface em inglês e português do Brasil; os nomes dos livros seguem o
   idioma do sistema.
 
-Ainda não: dicionários e comentários (veja
-[KISWORD_PLAN.md](KISWORD_PLAN.md), em inglês).
+- Painel de estudo à direita (F4) com **comentários** (`*.cmt.mybible`,
+  acompanhando o versículo mostrado ou clicado), **dicionários**
+  (`*.dct.mybible`: lista de palavras, busca enquanto digita, números de
+  Strong — clique num deles na Bíblia e a definição abre), **livros**
+  (`*.bok.mybible`) e **diários** (`*.jor.mybible`). O HTML deles é desenhado
+  nativamente: listas, cores do CSS do módulo, imagens (clique para ver em
+  tamanho real) e os links do MySword — para versículos, outros verbetes,
+  outros dicionários e livros, notas em popup. Ctrl+D procura a palavra
+  selecionada na Bíblia.
+- Pastas de módulos copiadas do celular funcionam como estão: `bibles/`,
+  `commentaries/`, `dictionaries/`, `books/` e `journals/` dentro de um
+  diretório de módulos também são lidas.
 
 Testado com uma coleção de 125 Bíblias do MySword: todas abrem, e todas,
 exceto as duas criptografadas, são lidas sem marcações desconhecidas —
@@ -79,7 +89,7 @@ respectivamente). Tags `v1.x.x` em diante são versões estáveis; `v0.x.x` e
 tags com sufixo (`v1.2.0-beta`) são marcadas como pré-lançamento.
 
 ```sh
-sudo apt install ./kisword_0.2.0-1_<distro>_amd64.deb
+sudo apt install ./kisword_0.3.0-1_<distro>_amd64.deb
 ```
 
 ## Compilação
@@ -119,6 +129,9 @@ Arquivo → Abrir módulo.
 | Ctrl++ / Ctrl+- / Ctrl+0 | Zoom |
 | F9 | Números de Strong ligados/desligados |
 | Ctrl+C | Copiar versículos com a referência |
+| F4 | Painel de estudo |
+| Alt+1 … Alt+4 | Comentário, dicionário, livros, diários |
+| Ctrl+D | Procurar a palavra selecionada |
 | Ctrl+O | Abrir módulo |
 
 ## Leveza, medida

@@ -54,6 +54,10 @@ struct KsView {
     GArray *notes;  /* KsNote */
     GtkWidget *popup;
 
+    KsViewStrongCb strong_cb;
+    KsViewVerseCb verse_cb;
+    void *cb_data;
+
     GPtrArray *boxes; /* verse box widgets in the text now */
     int box_width;
     guint resize_idle;
@@ -323,7 +327,16 @@ static void clear_chapter(KsView *v)
 
 static char *strong_markup(const char *num)
 {
-    return g_markup_printf_escaped("<b>Strong %s</b>\n<small>%s</small>", num, _("Dictionaries are not supported yet."));
+    return g_markup_printf_escaped("<b>Strong %s</b>\n<small>%s</small>", num,
+                                   _("No dictionary installed has this number."));
+}
+
+/* A Strong's number clicked: to the dictionaries, or a popup if none has it. */
+static char *strong_clicked(KsView *v, const char *num)
+{
+    if (v->strong_cb && v->strong_cb(num, v->cb_data))
+        return NULL;
+    return strong_markup(num);
 }
 
 static void popup_show(KsView *v, const char *markup, int x, int y);
@@ -335,7 +348,7 @@ static void box_link_cb(GtkWidget *w, const KsItem *it, int x_root, int y_root, 
     char *markup;
 
     if (it->kind == KS_SPAN_STRONG) {
-        markup = strong_markup(it->text);
+        markup = strong_clicked(v, it->text);
     } else {
         int verse = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(w), "verse"));
         char *ref = ks_ref_format(v->book, v->chapter, verse, 0);
@@ -347,7 +360,8 @@ static void box_link_cb(GtkWidget *w, const KsItem *it, int x_root, int y_root, 
         g_free(head);
         g_free(ref);
     }
-    popup_show(v, markup, x_root, y_root);
+    if (markup)
+        popup_show(v, markup, x_root, y_root);
     g_free(markup);
 }
 
@@ -400,6 +414,17 @@ static void drop_boxes(KsView *v)
     for (guint i = 0; i < v->boxes->len; i++)
         gtk_widget_destroy(g_ptr_array_index(v->boxes, i));
     g_ptr_array_set_size(v->boxes, 0);
+}
+
+/* GTK2 drops the old buffer before cancelling a scroll still pending in
+ * it, whose mark then is gone already (Gtk-CRITICAL): the old buffer is
+ * kept alive across the change. */
+static void set_buffer(GtkWidget *text, GtkTextBuffer *b)
+{
+    GtkTextBuffer *old = g_object_ref(gtk_text_view_get_buffer(GTK_TEXT_VIEW(text)));
+
+    gtk_text_view_set_buffer(GTK_TEXT_VIEW(text), b);
+    g_object_unref(old);
 }
 
 static void render(KsView *v, int scroll_verse)
@@ -503,7 +528,7 @@ static void render(KsView *v, int scroll_verse)
     gtk_text_buffer_get_start_iter(b, &start);
     gtk_text_buffer_place_cursor(b, &start);
     gtk_text_view_set_pixels_below_lines(GTK_TEXT_VIEW(v->text), r.para ? 8 : 4);
-    gtk_text_view_set_buffer(GTK_TEXT_VIEW(v->text), b);
+    set_buffer(v->text, b);
     g_object_unref(b);
     if (!v->box_width) {
         GtkAllocation al;
@@ -655,6 +680,8 @@ static const KsNote *note_at(KsView *v, int off)
     return NULL;
 }
 
+static int verse_index_at(KsView *v, int off);
+
 static gboolean release_cb(GtkWidget *w, GdkEventButton *e, KsView *v)
 {
     GtkTextBuffer *b = gtk_text_view_get_buffer(GTK_TEXT_VIEW(w));
@@ -663,8 +690,18 @@ static gboolean release_cb(GtkWidget *w, GdkEventButton *e, KsView *v)
 
     if (e->button != 1 || gtk_text_buffer_get_selection_bounds(b, &s, &z))
         return FALSE;
-    if (!link_at_pointer(v, e->x, e->y, &it))
+    if (!link_at_pointer(v, e->x, e->y, &it)) {
+        int bx, by, i;
+
+        if (!v->verse_cb || !v->mod || !v->verses->len)
+            return FALSE;
+        gtk_text_view_window_to_buffer_coords(GTK_TEXT_VIEW(w), GTK_TEXT_WINDOW_TEXT, (int)e->x, (int)e->y, &bx, &by);
+        gtk_text_view_get_iter_at_location(GTK_TEXT_VIEW(w), &it, bx, by);
+        i = verse_index_at(v, gtk_text_iter_get_offset(&it));
+        if (i >= 0)
+            v->verse_cb(g_array_index(v->verses, KsVerse, i).verse, v->cb_data);
         return FALSE;
+    }
 
     if (gtk_text_iter_has_tag(&it, v->t_strong)) {
         char *num;
@@ -674,7 +711,7 @@ static gboolean release_cb(GtkWidget *w, GdkEventButton *e, KsView *v)
             gtk_text_iter_backward_to_tag_toggle(&s, v->t_strong);
         gtk_text_iter_forward_to_tag_toggle(&z, v->t_strong);
         num = gtk_text_buffer_get_text(b, &s, &z, FALSE);
-        markup = strong_markup(num);
+        markup = strong_clicked(v, num);
         g_free(num);
     } else if (gtk_text_iter_has_tag(&it, v->t_note)) {
         const KsNote *n = note_at(v, gtk_text_iter_get_offset(&it));
@@ -1009,7 +1046,7 @@ void ks_view_message(KsView *v, const char *text)
     v->mod = NULL;
     v->nmods = 0;
     gtk_text_buffer_set_text(b, text, -1);
-    gtk_text_view_set_buffer(GTK_TEXT_VIEW(v->text), b);
+    set_buffer(v->text, b);
     g_object_unref(b);
 }
 
@@ -1095,6 +1132,31 @@ void ks_view_set_anchor(KsView *v, int verse, double frac)
     }
     gtk_adjustment_set_value(adj, CLAMP(y, gtk_adjustment_get_lower(adj),
                                         gtk_adjustment_get_upper(adj) - gtk_adjustment_get_page_size(adj)));
+}
+
+void ks_view_set_callbacks(KsView *v, KsViewStrongCb strong, KsViewVerseCb verse, void *data)
+{
+    v->strong_cb = strong;
+    v->verse_cb = verse;
+    v->cb_data = data;
+}
+
+char *ks_view_selection(KsView *v)
+{
+    GtkTextBuffer *b = gtk_text_view_get_buffer(GTK_TEXT_VIEW(v->text));
+    GtkTextIter s, e;
+    char *t;
+
+    if (!gtk_text_buffer_get_selection_bounds(b, &s, &e))
+        return NULL;
+    t = gtk_text_buffer_get_text(b, &s, &e, FALSE);
+    g_strdelimit(t, "\r\n\t", ' ');
+    g_strstrip(t);
+    if (!*t) {
+        g_free(t);
+        return NULL;
+    }
+    return t;
 }
 
 GtkAdjustment *ks_view_vadjustment(KsView *v)

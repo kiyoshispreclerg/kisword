@@ -1,21 +1,109 @@
 /* main.c - kisword: a light Bible reader for MySword modules.
  *
- * Besides the window, two command-line modes that need no display:
- *   kisword --dump "Jo 3:16" FILE   prints verses as plain text
- *   kisword --check FILE...         parses every verse, reports problems
- * Both are what `make test` uses against real modules. */
+ * Besides the window, command-line modes that need no display:
+ *   kisword --dump "Jo 3:16" FILE   prints verses as plain text (or a
+ *                                   dictionary word, a chapter's comments,
+ *                                   a book entry)
+ *   kisword --check FILE...         parses every verse or entry, reports
+ *                                   problems
+ *   kisword --search WORDS FILE     prints the verses found
+ * They are what `make test` uses against real modules. */
 #include "books.h"
 #include "config.h"
 #include "gbf.h"
+#include "html.h"
 #include "ks_i18n.h"
+#include "link.h"
 #include "module.h"
 #include "ref.h"
+#include "res.h"
 #include "search.h"
 #include "window.h"
 
 #include <gtk/gtk.h>
 #include <stdio.h>
 #include <string.h>
+
+static KsRes *open_res(const char *path)
+{
+    GError *err = NULL;
+    KsRes *r = ks_res_probe(path, &err);
+
+    if (!r || !ks_res_open(r, &err)) {
+        fprintf(stderr, "kisword: %s\n", err->message);
+        g_error_free(err);
+        ks_res_free(r);
+        return NULL;
+    }
+    return r;
+}
+
+static void print_html(const char *html)
+{
+    char *plain = ks_html_plain(html);
+
+    printf("%s\n", plain);
+    g_free(plain);
+}
+
+typedef struct {
+    int book, chapter, verse;
+    int n;
+} DumpComments;
+
+static void dump_comment(int from, int to, const char *html, void *data)
+{
+    DumpComments *d = data;
+    char *ref;
+
+    if (d->verse && (d->verse < from || d->verse > to))
+        return;
+    ref = ks_ref_format(d->book, d->chapter, from, to);
+    printf("%s%s\n", d->n++ ? "\n" : "", ref);
+    print_html(html);
+    g_free(ref);
+}
+
+/* --dump for dictionaries (a word), commentaries (a reference) and books
+ * or journals (an entry's id or title). */
+static int dump_res(const char *path, const char *key)
+{
+    KsRes *r = open_res(path);
+    char *html = NULL;
+    int status = 0;
+
+    if (!r)
+        return 1;
+    if (r->kind == KS_RES_COMMENTARY) {
+        KsRef ref;
+        DumpComments d = { 0 };
+
+        if (!ks_ref_parse(key, &ref) || !ref.book) {
+            fprintf(stderr, "kisword: %s: %s\n", _("Reference not recognized"), key);
+            status = 2;
+        } else {
+            d.book = ref.book;
+            d.chapter = ref.chapter;
+            d.verse = ref.verse;
+            ks_res_comments(r, ref.book, ref.chapter, dump_comment, &d);
+            status = d.n ? 0 : 1;
+        }
+    } else {
+        char *strong = r->kind == KS_RES_DICT ? ks_strong_normalize(key) : NULL;
+
+        html = r->kind == KS_RES_DICT ? ks_res_lookup(r, strong ? strong : key, NULL) : ks_res_entry(r, key, NULL);
+        g_free(strong);
+        if (html)
+            print_html(html);
+        else
+            status = 1;
+    }
+    if (status == 1)
+        fprintf(stderr, "kisword: %s: %s\n", _("Not found"), key);
+    g_free(html);
+    ks_res_free(r);
+    return status;
+}
 
 static int cli_dump(char **files, const char *text)
 {
@@ -28,6 +116,8 @@ static int cli_dump(char **files, const char *text)
         fprintf(stderr, "kisword: %s\n", _("--dump needs exactly one module file"));
         return 2;
     }
+    if (ks_res_kind_of(files[0], &(KsResKind){ 0 }))
+        return dump_res(files[0], text);
     if (!ks_ref_parse(text, &r) || !r.book) {
         fprintf(stderr, "kisword: %s: %s\n", _("Reference not recognized"), text);
         return 2;
@@ -150,13 +240,129 @@ static void check_verse(int book, int chapter, int verse, const char *text, gboo
     ks_gbf_parse(text, c->css, check_span, c);
 }
 
+/* ---- --check for dictionaries, commentaries, books and journals ---- */
+
+typedef struct {
+    KsRes *r;
+    int entries, invalid_utf8, links, images, missing_images;
+    GHashTable *bad; /* link not understood (first chars) -> count */
+    GHashTable *bad_where;
+    const char *where;
+} ResCheck;
+
+static void check_run(const KsHtmlRun *run, void *data)
+{
+    ResCheck *c = data;
+
+    if (run->href && run->len) {
+        KsLink l;
+
+        c->links++;
+        if (!ks_link_parse(run->href, &l)) {
+            char *key = g_strndup(run->href, 24);
+            int n = GPOINTER_TO_INT(g_hash_table_lookup(c->bad, key));
+
+            if (!n)
+                g_hash_table_insert(c->bad_where, g_strdup(key), g_strdup(c->where));
+            g_hash_table_insert(c->bad, key, GINT_TO_POINTER(n + 1));
+        }
+        ks_link_clear(&l);
+    }
+    if (run->image) {
+        GBytes *b = ks_res_image(c->r, run->image);
+
+        c->images++;
+        if (b)
+            g_bytes_unref(b);
+        else
+            c->missing_images++;
+    }
+}
+
+static void check_entry(const char *where, const char *html, gboolean valid, void *data)
+{
+    ResCheck *c = data;
+
+    c->entries++;
+    if (!valid)
+        c->invalid_utf8++;
+    c->where = where;
+    ks_html_render(html, c->r->css, check_run, c);
+}
+
+static int check_res(const char *path)
+{
+    static const char *const kinds[KS_RES_N] = { "commentary", "dictionary", "book", "journal" };
+    GError *err = NULL;
+    KsRes *r = ks_res_probe(path, &err);
+    ResCheck c = { 0 };
+    gint64 t0;
+    int status = 0;
+
+    if (!r) {
+        printf("%s: ERROR %s\n", path, err->message);
+        g_error_free(err);
+        return 1;
+    }
+    if (!r->supported) {
+        printf("%s: UNSUPPORTED %s — %s\n", path, ks_res_label(r), r->unsupported_why);
+        ks_res_free(r);
+        return 0;
+    }
+    if (!ks_res_open(r, &err)) {
+        printf("%s: ERROR %s\n", path, err->message);
+        g_error_free(err);
+        ks_res_free(r);
+        return 1;
+    }
+    c.r = r;
+    c.bad = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+    c.bad_where = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+    t0 = g_get_monotonic_time();
+    ks_res_foreach(r, check_entry, &c);
+    printf("%s: %s %s, %d entries, %d links, parsed in %.0f ms", path, kinds[r->kind], ks_res_label(r), c.entries,
+           c.links, (g_get_monotonic_time() - t0) / 1000.0);
+    if (c.invalid_utf8) {
+        status = 1;
+        printf("\n  invalid UTF-8 entries: %d", c.invalid_utf8);
+    }
+    if (c.missing_images)
+        printf("\n  note: images not in the module: %d of %d", c.missing_images, c.images);
+    if (g_hash_table_size(c.bad)) {
+        GHashTableIter it;
+        gpointer k, v;
+        int shown = 0;
+
+        printf("\n  note: links not understood:");
+        g_hash_table_iter_init(&it, c.bad);
+        while (g_hash_table_iter_next(&it, &k, &v) && shown++ < 12)
+            printf("\n    \"%s\": %d (first in %s)", (char *)k, GPOINTER_TO_INT(v),
+                   (char *)g_hash_table_lookup(c.bad_where, k));
+        if (g_hash_table_size(c.bad) > 12)
+            printf("\n    (%u more)", g_hash_table_size(c.bad) - 12);
+    }
+    if (!status)
+        printf(" — OK");
+    printf("\n");
+    g_hash_table_destroy(c.bad);
+    g_hash_table_destroy(c.bad_where);
+    ks_res_free(r);
+    return status;
+}
+
 static int cli_check(char **files)
 {
     int status = 0;
 
     for (int i = 0; files && files[i]; i++) {
         GError *err = NULL;
-        KsModule *m = ks_module_probe(files[i], &err);
+        KsModule *m;
+
+        if (ks_res_kind_of(files[i], &(KsResKind){ 0 })) {
+            status |= check_res(files[i]);
+            continue;
+        }
+        m = ks_module_probe(files[i], &err);
         Check c = { 0 };
         gint64 t0;
         int books = 0;
@@ -221,9 +427,9 @@ int main(int argc, char **argv)
     gboolean check = FALSE, version = FALSE, phrase = FALSE, whole = FALSE;
     GOptionEntry entries[] = {
         { "ref", 'r', 0, G_OPTION_ARG_STRING, &ref, N_("Open at this reference (e.g. \"Jo 3:16\")"), N_("REF") },
-        { "dump", 0, 0, G_OPTION_ARG_STRING, &dump, N_("Print REF from the given module as plain text and exit"),
+        { "dump", 0, 0, G_OPTION_ARG_STRING, &dump, N_("Print REF from the given module as plain text and exit (a word or entry for dictionaries and books)"),
           N_("REF") },
-        { "check", 0, 0, G_OPTION_ARG_NONE, &check, N_("Parse every verse of the given modules and report problems"),
+        { "check", 0, 0, G_OPTION_ARG_NONE, &check, N_("Parse every verse or entry of the given modules and report problems"),
           NULL },
         { "search", 0, 0, G_OPTION_ARG_STRING, &search,
           N_("Print the verses of the given module with all these words (or a Strong's number like H430) and exit"),
@@ -231,7 +437,7 @@ int main(int argc, char **argv)
         { "phrase", 0, 0, G_OPTION_ARG_NONE, &phrase, N_("With --search: the words together, in order"), NULL },
         { "whole-words", 0, 0, G_OPTION_ARG_NONE, &whole, N_("With --search: match whole words only"), NULL },
         { "version", 0, 0, G_OPTION_ARG_NONE, &version, N_("Show the version and exit"), NULL },
-        { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &files, NULL, N_("[MODULE.bbl.mybible…]") },
+        { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &files, NULL, N_("[MODULE.mybible…]") },
         { NULL, 0, 0, 0, NULL, NULL, NULL },
     };
     GOptionContext *ctx;

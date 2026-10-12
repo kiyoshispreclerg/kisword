@@ -19,14 +19,14 @@ static void db_error(GError **err, const char *path, sqlite3 *db)
     g_set_error(err, KS_MODULE_ERROR, 0, "%s: %s", path, db ? sqlite3_errmsg(db) : "out of memory");
 }
 
-static gboolean col_is(sqlite3_stmt *st, int i, const char *name)
+gboolean ks_col_is(sqlite3_stmt *st, int i, const char *name)
 {
     const char *c = sqlite3_column_name(st, i);
 
     return c && g_ascii_strcasecmp(c, name) == 0;
 }
 
-static char *col_text(sqlite3_stmt *st, int i)
+char *ks_col_text(sqlite3_stmt *st, int i)
 {
     const char *t = (const char *)sqlite3_column_text(st, i);
     char *s;
@@ -42,7 +42,7 @@ static char *col_text(sqlite3_stmt *st, int i)
     return s;
 }
 
-static gboolean col_bool(sqlite3_stmt *st, int i)
+gboolean ks_col_bool(sqlite3_stmt *st, int i)
 {
     if (sqlite3_column_type(st, i) == SQLITE_TEXT) {
         const char *t = (const char *)sqlite3_column_text(st, i);
@@ -65,35 +65,35 @@ static void read_details(KsModule *m, sqlite3 *db, int *encryption, int *compres
         return; /* no Details at all: everything falls back */
     if (sqlite3_step(st) == SQLITE_ROW) {
         for (int i = 0; i < sqlite3_column_count(st); i++) {
-            if (col_is(st, i, "Title"))
-                m->title = col_text(st, i);
-            else if (col_is(st, i, "Description"))
-                *description = col_text(st, i);
-            else if (col_is(st, i, "Abbreviation"))
-                m->abbrev = col_text(st, i);
-            else if (col_is(st, i, "Language"))
-                m->language = col_text(st, i);
-            else if (col_is(st, i, "Font"))
-                m->font = col_text(st, i);
-            else if (col_is(st, i, "VerseRules"))
-                m->verse_rules = col_text(st, i);
-            else if (col_is(st, i, "CustomCSS"))
-                m->custom_css = col_text(st, i);
-            else if (col_is(st, i, "RightToLeft"))
-                m->rtl = col_bool(st, i);
-            else if (col_is(st, i, "RightToLeftOT"))
-                m->rtl_ot = col_bool(st, i);
-            else if (col_is(st, i, "RightToLeftNT"))
-                m->rtl_nt = col_bool(st, i);
-            else if (col_is(st, i, "OT"))
-                m->ot = col_bool(st, i);
-            else if (col_is(st, i, "NT"))
-                m->nt = col_bool(st, i);
-            else if (col_is(st, i, "Strong"))
-                m->strong = col_bool(st, i);
-            else if (col_is(st, i, "encryption"))
+            if (ks_col_is(st, i, "Title"))
+                m->title = ks_col_text(st, i);
+            else if (ks_col_is(st, i, "Description"))
+                *description = ks_col_text(st, i);
+            else if (ks_col_is(st, i, "Abbreviation"))
+                m->abbrev = ks_col_text(st, i);
+            else if (ks_col_is(st, i, "Language"))
+                m->language = ks_col_text(st, i);
+            else if (ks_col_is(st, i, "Font"))
+                m->font = ks_col_text(st, i);
+            else if (ks_col_is(st, i, "VerseRules"))
+                m->verse_rules = ks_col_text(st, i);
+            else if (ks_col_is(st, i, "CustomCSS"))
+                m->custom_css = ks_col_text(st, i);
+            else if (ks_col_is(st, i, "RightToLeft"))
+                m->rtl = ks_col_bool(st, i);
+            else if (ks_col_is(st, i, "RightToLeftOT"))
+                m->rtl_ot = ks_col_bool(st, i);
+            else if (ks_col_is(st, i, "RightToLeftNT"))
+                m->rtl_nt = ks_col_bool(st, i);
+            else if (ks_col_is(st, i, "OT"))
+                m->ot = ks_col_bool(st, i);
+            else if (ks_col_is(st, i, "NT"))
+                m->nt = ks_col_bool(st, i);
+            else if (ks_col_is(st, i, "Strong"))
+                m->strong = ks_col_bool(st, i);
+            else if (ks_col_is(st, i, "encryption"))
                 *encryption = sqlite3_column_int(st, i);
-            else if (col_is(st, i, "compressed"))
+            else if (ks_col_is(st, i, "compressed"))
                 *compressed = sqlite3_column_int(st, i);
         }
     }
@@ -103,7 +103,7 @@ static void read_details(KsModule *m, sqlite3 *db, int *encryption, int *compres
 /* A title is one line: some modules have the whole Description, several
  * lines of it, where the title would go. Keeps the first line, with runs of
  * whitespace as one space. */
-static char *one_line(char *s)
+char *ks_one_line(char *s)
 {
     char *nl = strpbrk(s, "\r\n"), *d = s;
 
@@ -171,9 +171,9 @@ KsModule *ks_module_probe(const char *path, GError **err)
     if (!m->title)
         m->title = description ? g_strdup(description) : m->abbrev ? g_strdup(m->abbrev) : title_from_path(path);
     g_free(description);
-    one_line(m->title);
+    ks_one_line(m->title);
     if (m->abbrev)
-        one_line(m->abbrev);
+        ks_one_line(m->abbrev);
 
     /* MySword's own module protection; kisword does not get around it. */
     if (encryption) {
@@ -203,7 +203,7 @@ GHashTable *ks_module_details(const KsModule *m)
     t = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
     if (sqlite3_step(st) == SQLITE_ROW) {
         for (int i = 0; i < sqlite3_column_count(st); i++) {
-            char *v = sqlite3_column_type(st, i) == SQLITE_BLOB ? NULL : col_text(st, i);
+            char *v = sqlite3_column_type(st, i) == SQLITE_BLOB ? NULL : ks_col_text(st, i);
 
             if (v)
                 g_hash_table_insert(t, g_ascii_strdown(sqlite3_column_name(st, i), -1), v);
@@ -268,32 +268,61 @@ static gint by_label(gconstpointer a, gconstpointer b)
     return g_utf8_collate(ks_module_label(ma), ks_module_label(mb));
 }
 
+static void scan_dir(const char *dir, gboolean subdirs, KsFileCb cb, void *data)
+{
+    /* MySword's own folders, as copied from the phone. */
+    static const char *const known[] = { "bibles", "commentaries", "dictionaries", "books", "journals",
+                                         "journalsbig", NULL };
+    GDir *d = g_dir_open(dir, 0, NULL);
+    const char *name;
+
+    if (!d)
+        return;
+    while ((name = g_dir_read_name(d))) {
+        char *path = g_build_filename(dir, name, NULL);
+        char *lower = g_ascii_strdown(name, -1);
+
+        if (g_str_has_suffix(lower, ".mybible"))
+            cb(path, data);
+        else if (subdirs && (g_strv_contains(known, lower) || strcmp(lower, "mysword") == 0) &&
+                 g_file_test(path, G_FILE_TEST_IS_DIR))
+            scan_dir(path, strcmp(lower, "mysword") == 0, cb, data);
+        g_free(lower);
+        g_free(path);
+    }
+    g_dir_close(d);
+}
+
+void ks_scan_files(const char *const *dirs, KsFileCb cb, void *data)
+{
+    for (int i = 0; dirs && dirs[i]; i++)
+        scan_dir(dirs[i], TRUE, cb, data);
+}
+
+typedef struct {
+    GPtrArray *out;
+    GHashTable *seen;
+} Scan;
+
+static void scan_cb(const char *path, void *data)
+{
+    Scan *s = data;
+    char *lower = g_ascii_strdown(path, -1);
+
+    if (g_str_has_suffix(lower, ".bbl.mybible"))
+        add_module(s->out, s->seen, path);
+    g_free(lower);
+}
+
 GPtrArray *ks_module_scan(const char *const *dirs, const char *const *files)
 {
     GPtrArray *out = g_ptr_array_new_with_free_func((GDestroyNotify)ks_module_free);
     GHashTable *seen = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+    Scan s = { out, seen };
 
-    for (int i = 0; dirs && dirs[i]; i++) {
-        GDir *d = g_dir_open(dirs[i], 0, NULL);
-        const char *name;
-
-        if (!d)
-            continue;
-        while ((name = g_dir_read_name(d))) {
-            char *lower = g_ascii_strdown(name, -1);
-
-            if (g_str_has_suffix(lower, ".bbl.mybible")) {
-                char *path = g_build_filename(dirs[i], name, NULL);
-
-                add_module(out, seen, path);
-                g_free(path);
-            }
-            g_free(lower);
-        }
-        g_dir_close(d);
-    }
+    ks_scan_files(dirs, scan_cb, &s);
     for (int i = 0; files && files[i]; i++)
-        add_module(out, seen, files[i]);
+        scan_cb(files[i], &s);
 
     g_ptr_array_sort(out, by_label);
     g_hash_table_destroy(seen);

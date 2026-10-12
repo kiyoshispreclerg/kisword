@@ -30,8 +30,9 @@ LIBINTL := $(shell echo 'int main(void){return 0;}' | $(CC) -x c - -o /dev/null 
 LINGUAS := $(shell test -f po/LINGUAS && grep -v '^\#' po/LINGUAS)
 MOFILES := $(foreach lang,$(LINGUAS),po/$(lang).mo)
 
-SRCS := src/main.c src/window.c src/searchpane.c src/render.c src/versebox.c src/module.c src/gbf.c src/style.c src/rules.c src/html.c \
-	src/search.c src/boxes.c src/books.c src/ref.c src/config.c
+SRCS := src/main.c src/window.c src/searchpane.c src/studypane.c src/htmlview.c src/infodialog.c src/render.c \
+	src/versebox.c src/module.c src/res.c src/link.c src/gbf.c src/style.c src/rules.c src/html.c src/search.c \
+	src/boxes.c src/books.c src/ref.c src/config.c
 OBJS := $(SRCS:.c=.o)
 HDRS := $(wildcard src/*.h)
 
@@ -60,7 +61,8 @@ update-po: po/kisword.pot
 
 # ---- tests -------------------------------------------------------------------
 
-TESTS := tests/test_gbf tests/test_boxes tests/test_rules tests/test_html tests/test_ref tests/test_module tests/test_search
+TESTS := tests/test_gbf tests/test_boxes tests/test_rules tests/test_html tests/test_ref tests/test_link tests/test_module \
+	tests/test_search tests/test_res
 
 GBF_SRCS := src/gbf.c src/style.c src/html.c src/boxes.c
 GBF_HDRS := src/gbf.h src/html.h src/boxes.h
@@ -74,16 +76,22 @@ tests/test_rules: tests/test_rules.c src/rules.c src/rules.h $(GBF_SRCS) $(GBF_H
 tests/test_boxes: tests/test_boxes.c $(GBF_SRCS) $(GBF_HDRS)
 	$(CC) $(CFLAGS) $(TEST_CFLAGS) -Isrc -o $@ tests/test_boxes.c $(GBF_SRCS) $(TEST_LIBS)
 
-tests/test_html: tests/test_html.c src/html.c src/html.h
-	$(CC) $(CFLAGS) $(TEST_CFLAGS) -Isrc -o $@ tests/test_html.c src/html.c $(TEST_LIBS)
+tests/test_html: tests/test_html.c src/html.c src/style.c src/html.h src/gbf.h
+	$(CC) $(CFLAGS) $(TEST_CFLAGS) -Isrc -o $@ tests/test_html.c src/html.c src/style.c $(TEST_LIBS)
 
 tests/test_ref: tests/test_ref.c src/ref.c src/books.c src/ref.h src/books.h
 	$(CC) $(CFLAGS) $(TEST_CFLAGS) -Isrc -o $@ tests/test_ref.c src/ref.c src/books.c $(TEST_LIBS)
+
+tests/test_link: tests/test_link.c src/link.c src/ref.c src/books.c src/link.h src/ref.h src/books.h
+	$(CC) $(CFLAGS) $(TEST_CFLAGS) -Isrc -o $@ tests/test_link.c src/link.c src/ref.c src/books.c $(TEST_LIBS)
 
 MODULE_SRCS := src/module.c src/rules.c $(GBF_SRCS)
 
 tests/test_module: tests/test_module.c $(MODULE_SRCS) src/module.h src/rules.h $(GBF_HDRS)
 	$(CC) $(CFLAGS) $(TEST_CFLAGS) $(DEFS) -Isrc -o $@ tests/test_module.c $(MODULE_SRCS) $(TEST_LIBS) $(LIBINTL)
+
+tests/test_res: tests/test_res.c src/res.c src/res.h $(MODULE_SRCS) src/module.h $(GBF_HDRS)
+	$(CC) $(CFLAGS) $(TEST_CFLAGS) $(DEFS) -Isrc -o $@ tests/test_res.c src/res.c $(MODULE_SRCS) $(TEST_LIBS) $(LIBINTL)
 
 tests/test_search: tests/test_search.c src/search.c src/search.h $(MODULE_SRCS) src/module.h $(GBF_HDRS)
 	$(CC) $(CFLAGS) $(TEST_CFLAGS) $(DEFS) -Isrc -o $@ tests/test_search.c src/search.c $(MODULE_SRCS) $(TEST_LIBS) $(LIBINTL)

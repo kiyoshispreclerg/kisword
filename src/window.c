@@ -1,16 +1,19 @@
 /* window.c - kisword's main window (see window.h): module/book/chapter
  * selectors, the "go to" entry, menus carrying every shortcut,
- * back/forward history, and parallel Bibles -- interleaved in the main
- * view, or in columns of their own that scroll together. */
+ * back/forward history, parallel Bibles -- interleaved in the main view,
+ * or in columns of their own that scroll together -- and the study panel
+ * (commentaries, dictionaries, books, journals) on the right. */
 #include "window.h"
 
 #include "books.h"
-#include "html.h"
+#include "infodialog.h"
 #include "ks_i18n.h"
 #include "module.h"
 #include "ref.h"
 #include "render.h"
+#include "res.h"
 #include "searchpane.h"
+#include "studypane.h"
 
 #include <gdk/gdkkeysyms.h>
 #include <glib-unix.h>
@@ -35,6 +38,10 @@ typedef struct {
     KsModule *mod;
     KsView *view;
     KsSearchPane *search;
+    GPtrArray *res;       /* KsRes: commentaries, dictionaries, books, journals */
+    KsStudy *study;
+    GtkWidget *study_paned, *search_paned;
+    GtkCheckMenuItem *chk_study;
     GPtrArray *par;       /* parallel modules (KsModule *, not owned), open */
     GPtrArray *par_views; /* KsView * per parallel, in columns mode */
     GPtrArray *par_cols;  /* their column widgets */
@@ -246,6 +253,7 @@ static void navigate(KsWin *w, int book, int chapter, int scroll_verse, int hl_f
         w->syncing = FALSE;
     }
     ks_search_pane_set_book(w->search, book);
+    ks_study_set_verse(w->study, book, chapter, hl_from ? hl_from : scroll_verse);
     sync_widgets(w);
 }
 
@@ -326,6 +334,127 @@ static void fill_options(KsWin *w)
     gtk_widget_set_sensitive(w->opts_item, n > 0);
     gtk_widget_set_tooltip_text(w->opts_item, n ? NULL : _("This module has no options."));
     w->busy = FALSE;
+}
+
+/* ---- study panel ---------------------------------------------------------- */
+
+static void show_study(KsWin *w, gboolean show)
+{
+    GtkWidget *sw = ks_study_widget(w->study);
+    GtkAllocation al;
+
+    if (show == gtk_widget_get_visible(sw))
+        return;
+    if (!show) {
+        gtk_widget_get_allocation(sw, &al);
+        if (al.width > 50)
+            w->cfg->study_width = al.width;
+    }
+    gtk_widget_set_visible(sw, show);
+    if (show) {
+        int width;
+
+        gtk_widget_get_allocation(w->study_paned, &al);
+        /* Room for the Bible too: widen the window if it is narrow. */
+        if (al.width - w->cfg->study_width < 420) {
+            int ww, wh, max = gdk_screen_get_width(gtk_widget_get_screen(w->win));
+
+            gtk_window_get_size(GTK_WINDOW(w->win), &ww, &wh);
+            width = MIN(ww + w->cfg->study_width, max - 40);
+            if (width > ww)
+                gtk_window_resize(GTK_WINDOW(w->win), width, wh);
+            al.width += width - ww;
+        }
+        gtk_paned_set_position(GTK_PANED(w->study_paned), MAX(al.width - w->cfg->study_width, 300));
+    }
+    w->cfg->study = show;
+    w->busy = TRUE;
+    gtk_check_menu_item_set_active(w->chk_study, show);
+    w->busy = FALSE;
+}
+
+static void cmd_study_toggled(KsWin *w)
+{
+    if (!w->busy)
+        show_study(w, gtk_check_menu_item_get_active(w->chk_study));
+}
+
+static void study_tab(KsWin *w, KsResKind kind)
+{
+    show_study(w, TRUE);
+    ks_study_show_tab(w->study, kind);
+}
+
+static void cmd_commentary(KsWin *w) { study_tab(w, KS_RES_COMMENTARY); }
+static void cmd_dictionary(KsWin *w) { study_tab(w, KS_RES_DICT); }
+static void cmd_books(KsWin *w) { study_tab(w, KS_RES_BOOK); }
+static void cmd_journals(KsWin *w) { study_tab(w, KS_RES_JOURNAL); }
+
+/* Study > Look up: the word selected in the Bible, or just the entry. */
+static void cmd_lookup(KsWin *w)
+{
+    char *sel = ks_view_selection(w->view), *word = NULL;
+
+    show_study(w, TRUE);
+    if (sel) {
+        /* Without the Strong's numbers shown after the words: "beginningH7225". */
+        GRegex *re = g_regex_new("(?<=[\\p{L}\\x{2009}])[HG][0-9]+[a-z]?|\\x{2009}", 0, 0, NULL);
+
+        word = g_regex_replace_literal(re, sel, -1, 0, "", 0, NULL);
+        g_regex_unref(re);
+        g_strstrip(word);
+    }
+    if (word && *word && g_utf8_strlen(word, -1) <= 60)
+        ks_study_lookup(w->study, word);
+    else
+        ks_study_show_tab(w->study, KS_RES_DICT);
+    g_free(word);
+    g_free(sel);
+}
+
+/* A Strong's number clicked in a Bible. */
+static gboolean on_strong(const char *number, void *data)
+{
+    KsWin *w = data;
+    gboolean was = gtk_widget_get_visible(ks_study_widget(w->study));
+    gboolean ok;
+
+    show_study(w, TRUE);
+    ok = ks_study_strong(w->study, number);
+    if (!ok && !was)
+        show_study(w, FALSE);
+    return ok;
+}
+
+static void on_verse(int verse, void *data)
+{
+    KsWin *w = data;
+
+    ks_study_set_verse(w->study, w->book, w->chapter, verse);
+}
+
+static void set_view_callbacks(KsWin *w, KsView *v)
+{
+    ks_view_set_callbacks(v, on_strong, on_verse, w);
+}
+
+/* A Bible reference clicked in a commentary, dictionary or book. */
+static void study_go(const KsRef *r, void *data)
+{
+    KsWin *w = data;
+
+    if (!w->mod)
+        return;
+    if (r->book < 1 || r->book > KS_MAX_BOOK || !w->mod->nchapters[r->book]) {
+        status(w, _("%s is not in this module."), ks_book_name(r->book));
+        return;
+    }
+    navigate(w, r->book, r->chapter, 0, r->verse, r->verse_end, TRUE);
+}
+
+static void study_status(const char *msg, void *data)
+{
+    status(data, "%s", msg);
 }
 
 /* ---- parallel Bibles ------------------------------------------------------ */
@@ -432,6 +561,8 @@ static void parallels_changed(KsWin *w, gboolean show)
                               w->cfg->stacked };
         KsView *v = ks_view_new(&opt);
         GtkWidget *col = gtk_vbox_new(FALSE, 0), *head = column_head(m, w);
+
+        set_view_callbacks(w, v);
 
         gtk_widget_set_size_request(head, -1, 24);
         ks_view_set_font(v, w->font);
@@ -717,6 +848,7 @@ static void set_font(KsWin *w, PangoFontDescription *d)
     ks_view_set_font(w->view, d);
     for (guint i = 0; i < w->par_views->len; i++)
         ks_view_set_font(g_ptr_array_index(w->par_views, i), d);
+    ks_study_set_font(w->study, d);
     g_free(w->cfg->font);
     w->cfg->font = pango_font_description_to_string(d);
 }
@@ -746,6 +878,14 @@ static void save_state(KsWin *w)
         w->cfg->verse = ks_view_top_verse(w->view);
     }
     gtk_window_get_size(GTK_WINDOW(w->win), &w->cfg->width, &w->cfg->height);
+    if (gtk_widget_get_visible(ks_study_widget(w->study))) {
+        GtkAllocation al;
+
+        gtk_widget_get_allocation(ks_study_widget(w->study), &al);
+        if (al.width > 50)
+            w->cfg->study_width = al.width;
+    }
+    ks_study_save(w->study);
     ks_config_save(w->cfg);
 }
 
@@ -771,24 +911,80 @@ static gboolean on_delete(GtkWidget *win, GdkEvent *e, KsWin *w)
     return FALSE;
 }
 
-static void cmd_open(KsWin *w)
+static KsRes *find_res(KsWin *w, const char *path)
 {
-    GtkWidget *d = gtk_file_chooser_dialog_new(_("Open MySword Bible module"), GTK_WINDOW(w->win),
-                                               GTK_FILE_CHOOSER_ACTION_OPEN, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-                                               GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
+    char *real = realpath(path, NULL);
+    KsRes *found = NULL;
+
+    for (guint i = 0; real && i < w->res->len && !found; i++) {
+        KsRes *r = g_ptr_array_index(w->res, i);
+
+        if (strcmp(r->real, real) == 0)
+            found = r;
+    }
+    free(real);
+    return found;
+}
+
+/* A commentary, dictionary, book or journal from File > Open. */
+static void open_res(KsWin *w, const char *path)
+{
+    KsRes *r = find_res(w, path);
+    GError *err = NULL;
+
+    if (!r) {
+        r = ks_res_probe(path, &err);
+        if (!r) {
+            error_dialog(w, _("Could not open the module"), err->message);
+            g_error_free(err);
+            return;
+        }
+        g_ptr_array_add(w->res, r);
+        ks_config_add_module_file(w->cfg, path);
+    }
+    show_study(w, TRUE);
+    ks_study_added(w->study, r);
+}
+
+static void file_filter(GtkWidget *d, const char *name, const char *const *patterns)
+{
     GtkFileFilter *f = gtk_file_filter_new();
 
-    gtk_file_filter_set_name(f, _("MySword Bibles (*.bbl.mybible)"));
-    gtk_file_filter_add_pattern(f, "*.bbl.mybible");
-    gtk_file_filter_add_pattern(f, "*.BBL.MYBIBLE");
+    gtk_file_filter_set_name(f, name);
+    for (int i = 0; patterns[i]; i++) {
+        char *upper = g_ascii_strup(patterns[i], -1);
+
+        gtk_file_filter_add_pattern(f, patterns[i]);
+        gtk_file_filter_add_pattern(f, upper);
+        g_free(upper);
+    }
     gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(d), f);
+}
+
+static void cmd_open(KsWin *w)
+{
+    static const char *const all[] = { "*.mybible", NULL }, *const bibles[] = { "*.bbl.mybible", NULL },
+                             *const cmts[] = { "*.cmt.mybible", NULL }, *const dicts[] = { "*.dct.mybible", NULL },
+                             *const books[] = { "*.bok.mybible", "*.jor.mybible", NULL };
+    GtkWidget *d = gtk_file_chooser_dialog_new(_("Open MySword module"), GTK_WINDOW(w->win),
+                                               GTK_FILE_CHOOSER_ACTION_OPEN, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+                                               GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
+
+    file_filter(d, _("MySword modules (*.mybible)"), all);
+    file_filter(d, _("Bibles (*.bbl.mybible)"), bibles);
+    file_filter(d, _("Commentaries (*.cmt.mybible)"), cmts);
+    file_filter(d, _("Dictionaries (*.dct.mybible)"), dicts);
+    file_filter(d, _("Books and journals (*.bok.mybible, *.jor.mybible)"), books);
 
     if (gtk_dialog_run(GTK_DIALOG(d)) == GTK_RESPONSE_ACCEPT) {
         char *path = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(d));
         KsModule *m = find_module(w, path);
 
         gtk_widget_hide(d);
-        if (!m) {
+        if (ks_res_kind_of(path, &(KsResKind){ 0 })) {
+            open_res(w, path);
+            m = NULL;
+        } else if (!m) {
             GError *err = NULL;
 
             m = ks_module_probe(path, &err);
@@ -841,6 +1037,17 @@ static void cmd_search(KsWin *w)
         ks_search_pane_focus(w->search);
 }
 
+/* The search panel takes its width from the Bible's side, whatever the
+ * study panel has taken. */
+static void on_search_shown(KsWin *w)
+{
+    GtkAllocation al;
+
+    gtk_widget_get_allocation(w->search_paned, &al);
+    if (al.width > 400)
+        gtk_paned_set_position(GTK_PANED(w->search_paned), al.width - 330);
+}
+
 static void on_search_hidden(KsWin *w)
 {
     gtk_widget_grab_focus(ks_view_text(w->view));
@@ -868,114 +1075,17 @@ static void cmd_about(KsWin *w)
 
 /* ---- module information ---------------------------------------------------- */
 
-typedef struct {
-    GtkTextBuffer *b;
-    GtkTextTag *tags[7]; /* by KS_HTML_* bit */
-} InfoText;
-
-static void info_html_cb(const char *text, int len, unsigned style, void *data)
-{
-    InfoText *it = data;
-    GtkTextIter end, start;
-    int off;
-
-    gtk_text_buffer_get_end_iter(it->b, &end);
-    off = gtk_text_iter_get_offset(&end);
-    gtk_text_buffer_insert(it->b, &end, text, len);
-    gtk_text_buffer_get_iter_at_offset(it->b, &start, off);
-    for (int i = 0; i < 7; i++)
-        if (style & (1u << i))
-            gtk_text_buffer_apply_tag(it->b, it->tags[i], &start, &end);
-}
-
-static void info_insert(GtkTextBuffer *b, const char *text, const char *tag)
-{
-    GtkTextIter end;
-
-    gtk_text_buffer_get_end_iter(b, &end);
-    if (tag)
-        gtk_text_buffer_insert_with_tags_by_name(b, &end, text, -1, tag, NULL);
-    else
-        gtk_text_buffer_insert(b, &end, text, -1);
-}
-
-static void info_field(GtkTextBuffer *b, const char *label, const char *value)
-{
-    char *l;
-
-    if (!value || !*value)
-        return;
-    l = g_strdup_printf("%s: ", label);
-    info_insert(b, l, "label");
-    info_insert(b, value, NULL);
-    info_insert(b, "\n", NULL);
-    g_free(l);
-}
-
-/* Help > About the module: what Details says, with Comments as rich text. */
+/* Help > About the module. */
 static void cmd_module_info(KsWin *w)
 {
-    static const struct { const char *key, *label; } fields[] = {
-        { "description", N_("Description") }, { "abbreviation", N_("Abbreviation") },
-        { "language", N_("Language") },       { "version", N_("Version") },
-        { "versiondate", N_("Version date") }, { "publishdate", N_("Published") },
-        { "publisher", N_("Publisher") },     { "author", N_("Author") },
-        { "creator", N_("Creator") },         { "source", N_("Source") },
-    };
     KsModule *m = w->mod;
     GHashTable *d;
-    GtkWidget *dlg, *sw, *tv;
-    GtkTextBuffer *b;
-    InfoText it;
     GString *contents;
     int books = 0;
-    const char *comments, *editorial;
 
     if (!m)
         return;
     d = ks_module_details(m);
-    if (!d)
-        d = g_hash_table_new(g_str_hash, g_str_equal);
-
-    dlg = gtk_dialog_new_with_buttons(_("About the module"), GTK_WINDOW(w->win), GTK_DIALOG_DESTROY_WITH_PARENT,
-                                      GTK_STOCK_CLOSE, GTK_RESPONSE_CLOSE, NULL);
-    gtk_window_set_default_size(GTK_WINDOW(dlg), 560, 520);
-    tv = gtk_text_view_new();
-    gtk_text_view_set_editable(GTK_TEXT_VIEW(tv), FALSE);
-    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(tv), FALSE);
-    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(tv), GTK_WRAP_WORD_CHAR);
-    gtk_text_view_set_left_margin(GTK_TEXT_VIEW(tv), 10);
-    gtk_text_view_set_right_margin(GTK_TEXT_VIEW(tv), 10);
-    gtk_text_view_set_pixels_below_lines(GTK_TEXT_VIEW(tv), 2);
-    b = gtk_text_view_get_buffer(GTK_TEXT_VIEW(tv));
-    gtk_text_buffer_create_tag(b, "title", "weight", PANGO_WEIGHT_BOLD, "scale", PANGO_SCALE_X_LARGE,
-                               "pixels-above-lines", 8, "pixels-below-lines", 8, NULL);
-    gtk_text_buffer_create_tag(b, "label", "weight", PANGO_WEIGHT_BOLD, NULL);
-    it.b = b;
-    it.tags[0] = gtk_text_buffer_create_tag(b, NULL, "weight", PANGO_WEIGHT_BOLD, NULL);
-    it.tags[1] = gtk_text_buffer_create_tag(b, NULL, "style", PANGO_STYLE_ITALIC, NULL);
-    it.tags[2] = gtk_text_buffer_create_tag(b, NULL, "underline", PANGO_UNDERLINE_SINGLE, NULL);
-    it.tags[3] = gtk_text_buffer_create_tag(b, NULL, "rise", 5 * PANGO_SCALE, "scale", PANGO_SCALE_SMALL, NULL);
-    it.tags[4] = gtk_text_buffer_create_tag(b, NULL, "rise", -3 * PANGO_SCALE, "scale", PANGO_SCALE_SMALL, NULL);
-    it.tags[5] = gtk_text_buffer_create_tag(b, NULL, "scale", PANGO_SCALE_LARGE, NULL);
-    it.tags[6] = gtk_text_buffer_create_tag(b, NULL, "foreground", "#3b78c4", NULL);
-
-    info_insert(b, m->title, "title");
-    info_insert(b, "\n", NULL);
-    for (size_t i = 0; i < G_N_ELEMENTS(fields); i++) {
-        const char *v = g_hash_table_lookup(d, fields[i].key);
-
-        char *date = NULL;
-
-        if (strcmp(fields[i].key, "description") == 0 && v && strcmp(v, m->title) == 0)
-            continue;
-        /* "2013-11-07 00:00:00": dates stored as timestamps. */
-        if (v && g_str_has_suffix(v, " 00:00:00"))
-            v = date = g_strndup(v, strlen(v) - 9);
-        info_field(b, _(fields[i].label), v);
-        g_free(date);
-    }
-
     contents = g_string_new(NULL);
     for (int i = 1; i <= KS_MAX_BOOK; i++)
         books += m->nchapters[i] != 0;
@@ -987,34 +1097,10 @@ static void cmd_module_info(KsWin *w)
         g_string_append_printf(contents, "%s%s", contents->len ? ", " : "", _("right to left"));
     if (m->rules)
         g_string_append_printf(contents, "%s%s", contents->len ? ", " : "", _("verse rules"));
-    info_field(b, _("Contents"), contents->str);
+    ks_info_dialog(GTK_WINDOW(w->win), m->title, d, contents->str, m->path);
     g_string_free(contents, TRUE);
-    info_field(b, _("File"), m->path);
-
-    comments = g_hash_table_lookup(d, "comments");
-    editorial = g_hash_table_lookup(d, "editorialcomments");
-    if (comments) {
-        info_insert(b, "\n", NULL);
-        ks_html_parse(comments, info_html_cb, &it);
-        info_insert(b, "\n", NULL);
-    }
-    if (editorial) {
-        info_insert(b, "\n", NULL);
-        info_insert(b, _("Editorial comments"), "label");
-        info_insert(b, "\n", NULL);
-        ks_html_parse(editorial, info_html_cb, &it);
-    }
-    g_hash_table_destroy(d);
-
-    sw = gtk_scrolled_window_new(NULL, NULL);
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
-    gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(sw), GTK_SHADOW_IN);
-    gtk_container_set_border_width(GTK_CONTAINER(sw), 6);
-    gtk_container_add(GTK_CONTAINER(sw), tv);
-    gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(dlg))), sw, TRUE, TRUE, 0);
-    gtk_widget_show_all(sw);
-    gtk_dialog_run(GTK_DIALOG(dlg));
-    gtk_widget_destroy(dlg);
+    if (d)
+        g_hash_table_destroy(d);
 }
 
 /* ---- building ------------------------------------------------------------- */
@@ -1087,6 +1173,21 @@ static GtkWidget *build_menus(KsWin *w, GtkAccelGroup *ag)
     menu_item(m, ag, _("_Normal size"), GDK_KEY_0, GDK_CONTROL_MASK, cmd_zoom_reset, w);
     menu_item(m, ag, _("_Font…"), 0, 0, cmd_font, w);
 
+    m = submenu(bar, _("_Study"));
+    mi = gtk_check_menu_item_new_with_mnemonic(_("Study _panel"));
+    w->chk_study = GTK_CHECK_MENU_ITEM(mi);
+    gtk_check_menu_item_set_active(w->chk_study, w->cfg->study);
+    gtk_widget_add_accelerator(mi, "activate", ag, GDK_KEY_F4, 0, GTK_ACCEL_VISIBLE);
+    g_signal_connect_swapped(mi, "toggled", G_CALLBACK(cmd_study_toggled), w);
+    gtk_menu_shell_append(GTK_MENU_SHELL(m), mi);
+    separator(m);
+    menu_item(m, ag, _("_Commentary"), GDK_KEY_1, GDK_MOD1_MASK, cmd_commentary, w);
+    menu_item(m, ag, _("_Dictionary"), GDK_KEY_2, GDK_MOD1_MASK, cmd_dictionary, w);
+    menu_item(m, ag, _("_Books"), GDK_KEY_3, GDK_MOD1_MASK, cmd_books, w);
+    menu_item(m, ag, _("_Journals"), GDK_KEY_4, GDK_MOD1_MASK, cmd_journals, w);
+    separator(m);
+    menu_item(m, ag, _("_Look up in the dictionary"), GDK_KEY_d, GDK_CONTROL_MASK, cmd_lookup, w);
+
     m = submenu(bar, _("_Go"));
     w->back_item = menu_item(m, ag, _("_Back"), GDK_KEY_Left, GDK_MOD1_MASK, cmd_back, w);
     w->fwd_item = menu_item(m, ag, _("_Forward"), GDK_KEY_Right, GDK_MOD1_MASK, cmd_forward, w);
@@ -1098,7 +1199,7 @@ static GtkWidget *build_menus(KsWin *w, GtkAccelGroup *ag)
     w->search_item = menu_item(m, ag, _("_Search…"), GDK_KEY_f, GDK_CONTROL_MASK, cmd_search, w);
 
     m = submenu(bar, _("_Help"));
-    w->info_item = menu_item(m, ag, _("About the _module…"), 0, 0, cmd_module_info, w);
+    w->info_item = menu_item(m, ag, _("About the Bible _module…"), 0, 0, cmd_module_info, w);
     menu_item(m, ag, _("_About"), 0, 0, cmd_about, w);
     return bar;
 }
@@ -1230,6 +1331,7 @@ void ks_window_run(KsConfig *cfg, char **files, const char *ref)
         g_ptr_array_add(extra, cfg->module_files[i]);
     g_ptr_array_add(extra, NULL);
     w->mods = ks_module_scan((const char *const *)dirs->pdata, (const char *const *)extra->pdata);
+    w->res = ks_res_scan((const char *const *)dirs->pdata, (const char *const *)extra->pdata);
     g_ptr_array_free(dirs, TRUE);
     g_ptr_array_free(extra, TRUE);
 
@@ -1243,8 +1345,15 @@ void ks_window_run(KsConfig *cfg, char **files, const char *ref)
     g_unix_signal_add(SIGINT, on_sigterm, w);
 
     w->view = ks_view_new(&opt);
+    set_view_callbacks(w, w->view);
     w->font = pango_font_description_from_string(cfg->font ? cfg->font : KS_DEFAULT_FONT);
     ks_view_set_font(w->view, w->font);
+    {
+        KsStudyCallbacks cb = { study_go, study_status };
+
+        w->study = ks_study_new(cfg, w->res, &cb, w);
+        ks_study_set_font(w->study, w->font);
+    }
     w->search = ks_search_pane_new(search_go, w);
     g_signal_connect_swapped(ks_search_pane_widget(w->search), "hide", G_CALLBACK(on_search_hidden), w);
 
@@ -1261,6 +1370,14 @@ void ks_window_run(KsConfig *cfg, char **files, const char *ref)
     gtk_paned_pack1(GTK_PANED(paned), w->columns, TRUE, FALSE);
     gtk_paned_pack2(GTK_PANED(paned), ks_search_pane_widget(w->search), FALSE, FALSE);
     gtk_paned_set_position(GTK_PANED(paned), MAX(cfg->width - 330, 300));
+    w->search_paned = paned;
+    g_signal_connect_swapped(ks_search_pane_widget(w->search), "show", G_CALLBACK(on_search_shown), w);
+    /* The study panel to the right of it all. */
+    w->study_paned = gtk_hpaned_new();
+    gtk_paned_pack1(GTK_PANED(w->study_paned), paned, TRUE, FALSE);
+    gtk_paned_pack2(GTK_PANED(w->study_paned), ks_study_widget(w->study), FALSE, FALSE);
+    gtk_paned_set_position(GTK_PANED(w->study_paned), MAX(cfg->width - cfg->study_width, 300));
+    paned = w->study_paned;
 
     vbox = gtk_vbox_new(FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), build_menus(w, ag), FALSE, FALSE, 0);
@@ -1298,6 +1415,8 @@ void ks_window_run(KsConfig *cfg, char **files, const char *ref)
     g_free(default_dir);
 
     gtk_widget_show_all(w->win);
+    if (!cfg->study)
+        gtk_widget_hide(ks_study_widget(w->study));
     gtk_widget_grab_focus(ks_view_text(w->view));
     gtk_main();
 }

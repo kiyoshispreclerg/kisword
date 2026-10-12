@@ -45,8 +45,17 @@ but a separate program; it may end up in a future `kidesktop-extras`.
 - Right-to-left modules are laid out right-to-left.
 - Interface in English and Brazilian Portuguese; book names follow the locale.
 
-Not yet: dictionaries and commentaries (see
-[KISWORD_PLAN.md](KISWORD_PLAN.md)).
+- A study panel on the right (F4) with **commentaries** (`*.cmt.mybible`,
+  following the verse shown or clicked), **dictionaries** (`*.dct.mybible`:
+  word list, type-ahead lookup, Strong's numbers — click one in the Bible
+  and its definition opens), **books** (`*.bok.mybible`) and **journals**
+  (`*.jor.mybible`). Their HTML is drawn natively: lists, colors from the
+  module's CSS, images (click for full size), and MySword's links — to Bible
+  verses, other entries, other dictionaries and books, notes in popups.
+  Ctrl+D looks up the word selected in the Bible.
+- Module folders copied from the phone work as they are: `bibles/`,
+  `commentaries/`, `dictionaries/`, `books/` and `journals/` inside a
+  module directory are scanned too.
 
 Tested against a collection of 125 MySword Bibles: all open, and all but
 the two encrypted ones parse without unknown tags — titles, poetry lines,
@@ -73,7 +82,7 @@ respectively). Tags `v1.x.x` and later are stable releases; `v0.x.x` and
 tags with a suffix (`v1.2.0-beta`) are marked as pre-releases.
 
 ```sh
-sudo apt install ./kisword_0.2.0-1_<distro>_amd64.deb
+sudo apt install ./kisword_0.3.0-1_<distro>_amd64.deb
 ```
 
 ## Building
@@ -112,6 +121,9 @@ Put modules in `~/.local/share/kisword/modules/`, list more directories in
 | Ctrl++ / Ctrl+- / Ctrl+0 | Zoom |
 | F9 | Strong's numbers on/off |
 | Ctrl+C | Copy verses with reference |
+| F4 | Study panel |
+| Alt+1 … Alt+4 | Commentary, dictionary, books, journals |
+| Ctrl+D | Look up the selected word |
 | Ctrl+O | Open module |
 
 ## Lightness, measured

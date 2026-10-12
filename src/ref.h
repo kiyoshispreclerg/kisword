@@ -15,6 +15,9 @@ typedef struct {
  * "gn1", "John 3:16", "Gênesis" and, without a book, "3:16". */
 gboolean ks_ref_parse(const char *s, KsRef *out);
 
+/* The same with English book names first (references inside modules). */
+gboolean ks_ref_parse_en(const char *s, KsRef *out);
+
 /* "Jo 3", "Jo 3:16", "Jo 3:16-18" with the current language's abbreviation
  * (verse/verse_end 0 = absent). */
 char *ks_ref_format(int book, int chapter, int verse, int verse_end);
