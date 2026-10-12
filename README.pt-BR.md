@@ -24,6 +24,9 @@ mas é um programa separado; pode vir a fazer parte de um futuro
   que o MySword aplica a cada versículo) e a parte simples do `CustomCSS` —
   cores de classes, itálico, negrito, sobrescrito, elementos ocultos e de
   bloco.
+- Exibir → Opções do módulo: as opções que os módulos definem nas suas
+  VerseRules (vogais e acentos do hebraico, léxico, glosas, variantes…),
+  lembradas por módulo.
 - Números de Strong como pequenos sobrescritos clicáveis (F9 os esconde).
 - Notas de rodapé como marcadores clicáveis que abrem um popup.
 - Um versículo por linha ou em parágrafo.
@@ -54,9 +57,13 @@ Testado com uma coleção de 125 Bíblias do MySword: todas abrem, e todas,
 exceto as duas criptografadas, são lidas sem marcações desconhecidas —
 títulos, linhas de poesia, interlineares, referências cruzadas, o HTML
 produzido por VerseRules, módulos que misturam testamentos da direita para a
-esquerda e da esquerda para a direita. Interlineares feitos para o layout
-HTML empilhado do MySword (palavra sobre glosa sobre morfologia) aparecem em
-texto corrido: completos, porém densos.
+esquerda e da esquerda para a direita.
+
+Interlineares e módulos com anotação linguística são dispostos como no
+MySword: cada palavra uma coluna (a palavra sobre seu número de Strong,
+morfologia, transliteração e glosa), correndo da direita para a esquerda no
+hebraico, e as caixas de anotação aninhadas com suas bordas. Exibir →
+Interlinear em colunas desliga isso, voltando ao texto corrido.
 
 **Módulos criptografados não são suportados.** Alguns módulos do MySword (por
 exemplo, os com `encryption` definido na tabela `Details`) são protegidos
