@@ -2,7 +2,11 @@
 
 Planejamento de 2026-10-09.
 
-**Status (2026-10-09): fase 1 implementada.** Diferenças em relação ao planejado:
+**Status (2026-10-12): fases 1 e 2 implementadas** — a fase 2 (busca, paralelas,
+`VerseRules`, "Sobre o módulo") está descrita na seção 7, e o teste contra 125 módulos
+reais na 7.1.
+
+Fase 1, diferenças em relação ao planejado:
 
 - Ligar/desligar Strong, notas, vermelho e parágrafos **re-renderiza** o capítulo a
   partir dos textos já em memória (sem tocar no banco), em vez de mudar propriedades
