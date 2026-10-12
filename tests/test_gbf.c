@@ -93,6 +93,9 @@ int main(void)
     expect("a &amp; b &#233; &lt;x&gt; &bogus; &", "T'a ' T'&' T' b ' T'é' T' ' T'<' T'x' T'>' T' &bogus; &'");
     expect("1 < 2 and <FI>x<Fi>", "T'1 < 2 and ' T{i}'x'");
     expect("", "");
+    /* Stored line breaks are whitespace (ACF ends verses in "\r "). */
+    expect("a\r\nb.\r ", "T'a' T' ' T'b.' T' ' T' '");
+    expect_plain("nada me faltará.\r ", "nada me faltará.");
 
     /* Classes, colors and links as VerseRules write them (HiSB, OpenGNTOTLA). */
     expect("<span class='red' dir='rtl'>[</span>x", "T#cc2222'[' T'x'");

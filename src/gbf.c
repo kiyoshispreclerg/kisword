@@ -402,6 +402,16 @@ void ks_gbf_parse(const char *s, const KsStyleSheet *css, KsSpanCb cb, void *dat
             }
             continue;
         }
+        if (*p == '\r' || *p == '\n') {
+            /* Line breaks in the stored text are just whitespace, as in
+             * MySword's HTML view (some modules end every verse in "\r"). */
+            emit(&ps, KS_SPAN_TEXT, text, p - text);
+            while (*p == '\r' || *p == '\n')
+                p++;
+            emit(&ps, KS_SPAN_TEXT, " ", 1);
+            text = p;
+            continue;
+        }
         if (*p != '<') {
             p++;
             continue;
