@@ -96,6 +96,22 @@ static void read_details(KsModule *m, sqlite3 *db, int *encryption, int *compres
     sqlite3_finalize(st);
 }
 
+/* A title is one line: some modules have the whole Description, several
+ * lines of it, where the title would go. Keeps the first line, with runs of
+ * whitespace as one space. */
+static char *one_line(char *s)
+{
+    char *nl = strpbrk(s, "\r\n"), *d = s;
+
+    if (nl)
+        *nl = '\0';
+    for (char *p = s; *p; p++)
+        if (!(g_ascii_isspace(*p) && (d == s || d[-1] == ' ')))
+            *d++ = g_ascii_isspace(*p) ? ' ' : *p;
+    *d = '\0';
+    return g_strchomp(s);
+}
+
 static char *title_from_path(const char *path)
 {
     char *base = g_path_get_basename(path);
@@ -150,6 +166,9 @@ KsModule *ks_module_probe(const char *path, GError **err)
     if (!m->title)
         m->title = description ? g_strdup(description) : m->abbrev ? g_strdup(m->abbrev) : title_from_path(path);
     g_free(description);
+    one_line(m->title);
+    if (m->abbrev)
+        one_line(m->abbrev);
 
     /* MySword's own module protection; kisword does not get around it. */
     if (encryption) {

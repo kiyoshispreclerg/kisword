@@ -48,7 +48,8 @@ static const char full_sql[] = BIBLE_TABLE
 static const char old_sql[] = BIBLE_TABLE
     "CREATE TABLE Details (Description NVARCHAR(250), Abbreviation NVARCHAR(50), Comments TEXT,"
     " Version INT, Font TEXT, RightToLeft BOOL, OT BOOL, NT BOOL, Apocrypha BOOL, Strong BOOL);"
-    "INSERT INTO Details VALUES ('Old Style', 'AAA', NULL, 1, 'DEFAULT', 'true', '1', '0', '0', '0');"
+    "INSERT INTO Details VALUES ('Old  Style' || char(13, 10) || 'second line', 'AAA', NULL, 1, 'DEFAULT',"
+    " 'true', '1', '0', '0', '0');"
     "INSERT INTO Bible VALUES (19, 23, 1, 'O SENHOR é o meu pastor');";
 
 static const char enc_sql[] = BIBLE_TABLE
@@ -123,7 +124,7 @@ int main(void)
             CHECK(x->verse_rules == NULL);
         } else if (strcmp(ks_module_label(x), "AAA") == 0) {
             CHECK(x->supported);
-            CHECK(strcmp(x->title, "Old Style") == 0); /* from Description */
+            CHECK(strcmp(x->title, "Old Style") == 0); /* from Description, first line */
             CHECK(x->font == NULL);                    /* "DEFAULT" dropped */
             CHECK(x->rtl && x->ot && !x->nt);          /* 'true', '1', '0' */
             CHECK(x->language == NULL);

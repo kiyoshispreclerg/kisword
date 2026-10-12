@@ -1067,7 +1067,20 @@ static GtkWidget *build_toolbar(KsWin *w)
     w->mod_store = gtk_list_store_new(MOD_N_COLS, G_TYPE_STRING, G_TYPE_INT, G_TYPE_BOOLEAN);
     w->mod_combo = gtk_combo_box_new_with_model(GTK_TREE_MODEL(w->mod_store));
     cell = gtk_cell_renderer_text_new();
-    g_object_set(cell, "ellipsize", PANGO_ELLIPSIZE_END, "width-chars", 30, NULL);
+    g_object_set(cell, "ellipsize", PANGO_ELLIPSIZE_END, "width-chars", 30, "single-paragraph-mode", TRUE, NULL);
+    {
+        /* The combo is as tall as its tallest row, and some titles are in
+         * scripts with very tall glyphs (Tibetan, Burmese): rows get the
+         * height of ordinary text. */
+        PangoFontMetrics *fm = pango_context_get_metrics(gtk_widget_get_pango_context(w->mod_combo),
+                                                         gtk_widget_get_style(w->mod_combo)->font_desc, NULL);
+        int ypad;
+
+        g_object_get(cell, "ypad", &ypad, NULL);
+        gtk_cell_renderer_set_fixed_size(cell, -1, PANGO_PIXELS(pango_font_metrics_get_ascent(fm) +
+                                                                pango_font_metrics_get_descent(fm)) + 2 * ypad);
+        pango_font_metrics_unref(fm);
+    }
     gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(w->mod_combo), cell, TRUE);
     gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(w->mod_combo), cell, "markup", MOD_COL_LABEL,
                                    "sensitive", MOD_COL_SENSITIVE, NULL);
