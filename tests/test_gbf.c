@@ -11,7 +11,7 @@ static int failures;
 static void ser(const KsSpan *sp, void *data)
 {
     static const char kinds[] = "TSMNVPLU";
-    static const char flags[] = "iroubp_t";
+    static const char flags[] = "iroubp_th";
     GString *g = data;
 
     if (g->len)
@@ -28,6 +28,8 @@ static void ser(const KsSpan *sp, void *data)
         g_string_append_printf(g, "@%d", sp->indent);
     if (sp->mark)
         g_string_append_printf(g, "(%.*s)", sp->mark_len, sp->mark);
+    if (sp->color)
+        g_string_append(g, sp->color);
     if (sp->len)
         g_string_append_printf(g, "'%.*s'", sp->len, sp->text);
 }
@@ -36,7 +38,7 @@ static void expect(const char *in, const char *want)
 {
     GString *g = g_string_new(NULL);
 
-    ks_gbf_parse(in, ser, g);
+    ks_gbf_parse(in, NULL, ser, g);
     if (strcmp(g->str, want) != 0) {
         printf("FAIL parse: %s\n  want: %s\n  got:  %s\n", in, want, g->str);
         failures++;
@@ -46,7 +48,7 @@ static void expect(const char *in, const char *want)
 
 static void expect_plain(const char *in, const char *want)
 {
-    char *got = ks_gbf_plain(in);
+    char *got = ks_gbf_plain(in, NULL);
 
     if (strcmp(got, want) != 0) {
         printf("FAIL plain: %s\n  want: %s\n  got:  %s\n", in, want, got);
@@ -91,6 +93,17 @@ int main(void)
     expect("a &amp; b &#233; &lt;x&gt; &bogus; &", "T'a ' T'&' T' b ' T'é' T' ' T'<' T'x' T'>' T' &bogus; &'");
     expect("1 < 2 and <FI>x<Fi>", "T'1 < 2 and ' T{i}'x'");
     expect("", "");
+
+    /* Classes, colors and links as VerseRules write them (HiSB, OpenGNTOTLA). */
+    expect("<span class='red' dir='rtl'>[</span>x", "T#cc2222'[' T'x'");
+    expect("<span class='blue'>a<span class='nope'>b</span>c</span>d",
+           "T#2a5db0'a' T#2a5db0'b' T#2a5db0'c' T'd'");
+    expect("<span class='red'>a</div>b</span>c", "T#cc2222'a' T#cc2222'b' T'c'"); /* stray close */
+    expect("<font color=green size=>x</font>", "T#2e7d32'x'");
+    expect("logos <a class='strong' href='sG3056'>G3056</a> <a class='morph' href='mN-NSM'>N-NSM</a>",
+           "T'logos ' S'G3056' T' ' M'N-NSM'");
+    expect("<a href='sG26|m$4|d-BIB 26'>love</a>", "T'love' S'G26'"); /* word linked to a number */
+    expect("<a class='d' href='d-OGNTd 1'>Βίβλος</a>", "T'Βίβλος'");
 
     expect_plain("In the beginning<WH7225> God<WH430> created<WH1254><WH853> the heaven.",
                  "In the beginning God created the heaven.");

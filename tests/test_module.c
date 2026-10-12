@@ -56,6 +56,13 @@ static const char enc_sql[] = BIBLE_TABLE
     "INSERT INTO Details VALUES ('Encrypted', 'ENC', 2, 1);"
     "INSERT INTO Bible VALUES (1, 1, 1, x'f3a66284');";
 
+/* VerseRules (one broken) and CustomCSS, as the Open* modules have them. */
+static const char rules_sql[] = BIBLE_TABLE
+    "CREATE TABLE Details (Title TEXT, Abbreviation TEXT, VerseRules TEXT, CustomCSS TEXT);"
+    "INSERT INTO Details VALUES ('Rules', 'RUL', '<G>(.*?)<g>' || char(9) || '<span class=''c''>$1</span>'"
+    " || char(10) || '((' || char(9) || 'x', 'span.c {color: @darken(@green,5%);}');"
+    "INSERT INTO Bible VALUES (43, 1, 1, '<G>logos<g> word');";
+
 static const char nodetails_sql[] = BIBLE_TABLE
     "INSERT INTO Bible VALUES (1, 1, 1, x'4f6c61ff');"; /* "Ola" + an invalid UTF-8 byte, as TEXT below */
 
@@ -73,6 +80,7 @@ int main(void)
     char *old = g_build_filename(dir, "old.BBL.MYBIBLE", NULL);
     char *enc = g_build_filename(dir, "enc.bbl.mybible", NULL);
     char *nod = g_build_filename(dir, "nodetails.bbl.mybible", NULL);
+    char *rul = g_build_filename(dir, "rules.bbl.mybible", NULL);
     char *junk = g_build_filename(dir, "junk.bbl.mybible", NULL);
     char *other = g_build_filename(dir, "readme.txt", NULL);
     const char *dirs[] = { dir, NULL };
@@ -86,6 +94,7 @@ int main(void)
     make_db(old, old_sql);
     make_db(enc, enc_sql);
     make_db(nod, nodetails_sql);
+    make_db(rul, rules_sql);
     {
         /* Store the invalid bytes as TEXT, as a badly converted module would. */
         sqlite3 *db;
@@ -102,7 +111,7 @@ int main(void)
     g_clear_error(&err);
 
     mods = ks_module_scan(dirs, files);
-    CHECK(mods->len == 4); /* full, old, enc, nodetails; junk and readme skipped, full once */
+    CHECK(mods->len == 5); /* full, old, enc, nodetails, rules; junk and readme skipped, full once */
     for (guint i = 0; i < mods->len; i++) {
         KsModule *x = g_ptr_array_index(mods, i);
 
@@ -130,6 +139,20 @@ int main(void)
             CHECK(g_utf8_validate(g->str, -1, NULL));
             CHECK(g_str_has_prefix(g->str, "1=Ola"));
             g_string_free(g, TRUE);
+        } else if (strcmp(ks_module_label(x), "RUL") == 0) {
+            const KsClassStyle *cs;
+
+            CHECK(x->verse_rules && x->custom_css);
+            CHECK(ks_module_open(x, NULL));
+            CHECK(ks_rules_count(x->rules) == 1 && x->rules_invalid == 1);
+            cs = ks_style_sheet_class(x->css, "span", "c", -1);
+            CHECK(cs && cs->color && strcmp(cs->color, "#2e7d32") == 0);
+            g = g_string_new(NULL);
+            ks_module_chapter(x, 43, 1, verse_cb, g);
+            CHECK(strcmp(g->str, "1=<span class='c'>logos</span> word;") == 0);
+            g_string_free(g, TRUE);
+            ks_module_close(x);
+            CHECK(x->rules == NULL && x->css == NULL);
         } else {
             printf("unexpected module %s\n", ks_module_label(x));
             failures++;
@@ -159,6 +182,7 @@ int main(void)
     g_remove(old);
     g_remove(enc);
     g_remove(nod);
+    g_remove(rul);
     g_remove(junk);
     g_remove(other);
     g_rmdir(dir);
@@ -166,6 +190,7 @@ int main(void)
     g_free(old);
     g_free(enc);
     g_free(nod);
+    g_free(rul);
     g_free(junk);
     g_free(other);
     g_free(dir);

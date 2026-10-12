@@ -5,6 +5,9 @@
 #include <glib.h>
 #include <sqlite3.h>
 
+#include "gbf.h"
+#include "rules.h"
+
 #define KS_MAX_BOOK 99
 
 #define KS_MODULE_ERROR (ks_module_error_quark())
@@ -17,7 +20,8 @@ typedef struct {
     char *abbrev;          /* may be NULL */
     char *language;        /* may be NULL */
     char *font;            /* Details.Font, NULL for "DEFAULT"/absent */
-    char *verse_rules;     /* Details.VerseRules, NULL if absent (unused in phase 1) */
+    char *verse_rules;     /* Details.VerseRules, NULL if absent */
+    char *custom_css;      /* Details.CustomCSS, NULL if absent */
     gboolean rtl, ot, nt, strong;
 
     gboolean supported;    /* FALSE: encrypted/compressed/binary text */
@@ -26,6 +30,9 @@ typedef struct {
     /* Set by ks_module_open(). */
     sqlite3 *db;
     sqlite3_stmt *st_chapter;
+    KsRules *rules;        /* compiled verse_rules, NULL if none */
+    int rules_invalid;     /* rules that did not compile */
+    KsStyleSheet *css;     /* built-in classes + custom_css */
     guint16 nchapters[KS_MAX_BOOK + 1]; /* per book; 0 = book absent */
 } KsModule;
 
@@ -47,8 +54,9 @@ gboolean ks_module_open(KsModule *m, GError **err);
 void ks_module_close(KsModule *m);
 
 /* Verses of one chapter in order; text is valid UTF-8 (fixed up if the
- * module's wasn't) and only valid during the callback. Returns the number
- * of verses, -1 if the module is not open. */
+ * module's wasn't), has the VerseRules applied, and is only valid during
+ * the callback. Returns the number of verses, -1 if the module is not
+ * open. */
 typedef void (*KsVerseCb)(int verse, const char *text, void *data);
 int ks_module_chapter(KsModule *m, int book, int chapter, KsVerseCb cb, void *data);
 

@@ -371,7 +371,21 @@ janela. Gravado ao fechar e ao trocar módulo; nunca a cada clique.
 - **Bíblias paralelas**: modo intercalado (um `GtkTextView`, verso a verso de cada
   módulo — alinhamento perfeito, simples) e modo colunas (`GtkHPaned` com rolagem
   sincronizada pelo verso no topo, usando as marcas `vN`).
-- `VerseRules` e `span class` (seção 1.4).
+- `VerseRules` e `span class` (seção 1.4). **Feito** (`rules.c`, `style.c`):
+  - Formato real: `padrão⇥substituição[⇥substituição desligada⇥nome]`; as de 4 campos
+    são opções que o MySword deixa ligar/desligar — aplicamos a forma "ligada". Sintaxe
+    .NET (`$1`, lookbehind, `\1`), lida pelo PCRE do `GRegex` depois de converter
+    `$N` → `\g<N>`. Regra que não compila é pulada (o `--check` conta).
+  - Regras-identidade (`(ׄ|ׅ|…)⇥$1`, só existem para poderem ser desligadas) são
+    descartadas: no ETCBC isso levou a Bíblia toda de 8 s para 0,9 s.
+  - Regras aplicadas em `module.c` a todo verso lido; o BHSE (28 regras pesadas) custa
+    ~0,3 ms/verso, ~10 ms por capítulo.
+  - Classes: cores embutidas (`red`, `blue`, `green`, `brown`, `gray`, …) mais um
+    subconjunto do `Details.CustomCSS` (é CSS de WebView, com funções do MySword como
+    `@darken(@red,5%)`): `color`, itálico, negrito, sublinhado, `vertical-align`,
+    `display:block/none`, para `.c`, `a.c` e elementos próprios (`<gloss>`).
+  - `<a class='strong' href='sG3056'>` (o que as regras fazem dos `<WG…>`) volta a ser
+    número Strong clicável; `<a class='morph'>`, morfologia.
 - "Sobre o módulo" com `Comments`/`EditorialComments`.
 
 ## 8. Empacotamento

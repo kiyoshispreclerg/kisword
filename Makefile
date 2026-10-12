@@ -30,7 +30,8 @@ LIBINTL := $(shell echo 'int main(void){return 0;}' | $(CC) -x c - -o /dev/null 
 LINGUAS := $(shell test -f po/LINGUAS && grep -v '^\#' po/LINGUAS)
 MOFILES := $(foreach lang,$(LINGUAS),po/$(lang).mo)
 
-SRCS := src/main.c src/window.c src/render.c src/module.c src/gbf.c src/books.c src/ref.c src/config.c
+SRCS := src/main.c src/window.c src/render.c src/module.c src/gbf.c src/style.c src/rules.c src/books.c \
+	src/ref.c src/config.c
 OBJS := $(SRCS:.c=.o)
 HDRS := $(wildcard src/*.h)
 
@@ -59,16 +60,21 @@ update-po: po/kisword.pot
 
 # ---- tests -------------------------------------------------------------------
 
-TESTS := tests/test_gbf tests/test_ref tests/test_module
+TESTS := tests/test_gbf tests/test_rules tests/test_ref tests/test_module
 
-tests/test_gbf: tests/test_gbf.c src/gbf.c src/gbf.h
-	$(CC) $(CFLAGS) $(TEST_CFLAGS) -Isrc -o $@ tests/test_gbf.c src/gbf.c $(TEST_LIBS)
+tests/test_gbf: tests/test_gbf.c src/gbf.c src/style.c src/gbf.h
+	$(CC) $(CFLAGS) $(TEST_CFLAGS) -Isrc -o $@ tests/test_gbf.c src/gbf.c src/style.c $(TEST_LIBS)
+
+tests/test_rules: tests/test_rules.c src/rules.c src/rules.h src/style.c src/gbf.c src/gbf.h
+	$(CC) $(CFLAGS) $(TEST_CFLAGS) -Isrc -o $@ tests/test_rules.c src/rules.c src/style.c src/gbf.c $(TEST_LIBS)
 
 tests/test_ref: tests/test_ref.c src/ref.c src/books.c src/ref.h src/books.h
 	$(CC) $(CFLAGS) $(TEST_CFLAGS) -Isrc -o $@ tests/test_ref.c src/ref.c src/books.c $(TEST_LIBS)
 
-tests/test_module: tests/test_module.c src/module.c src/module.h
-	$(CC) $(CFLAGS) $(TEST_CFLAGS) $(DEFS) -Isrc -o $@ tests/test_module.c src/module.c $(TEST_LIBS) $(LIBINTL)
+MODULE_SRCS := src/module.c src/rules.c src/style.c src/gbf.c
+
+tests/test_module: tests/test_module.c $(MODULE_SRCS) src/module.h src/rules.h src/gbf.h
+	$(CC) $(CFLAGS) $(TEST_CFLAGS) $(DEFS) -Isrc -o $@ tests/test_module.c $(MODULE_SRCS) $(TEST_LIBS) $(LIBINTL)
 
 # Unit tests always; the real modules in interno/ (kept out of the
 # repository) too, when present.

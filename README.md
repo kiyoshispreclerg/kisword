@@ -16,6 +16,9 @@ but a separate program; it may end up in a future `kidesktop-extras`.
 - Bibles in MySword format, with the tags they use rendered natively (no
   WebKit): words of Jesus in red, added words in italics, OT quotations,
   section titles, paragraph marks, indentation.
+- Modules' own formatting: `VerseRules` (the regex substitutions MySword
+  applies to each verse) and the simple part of their `CustomCSS` — class
+  colors, italics, bold, superscripts, hidden and block elements.
 - Strong's numbers as small clickable superscripts (F9 hides them).
 - Footnotes as clickable markers that open a popup.
 - Verse-per-line or paragraph layout.

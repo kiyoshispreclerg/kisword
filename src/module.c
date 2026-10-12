@@ -77,6 +77,8 @@ static void read_details(KsModule *m, sqlite3 *db, int *encryption, int *compres
                 m->font = col_text(st, i);
             else if (col_is(st, i, "VerseRules"))
                 m->verse_rules = col_text(st, i);
+            else if (col_is(st, i, "CustomCSS"))
+                m->custom_css = col_text(st, i);
             else if (col_is(st, i, "RightToLeft"))
                 m->rtl = col_bool(st, i);
             else if (col_is(st, i, "OT"))
@@ -175,6 +177,7 @@ void ks_module_free(KsModule *m)
     g_free(m->language);
     g_free(m->font);
     g_free(m->verse_rules);
+    g_free(m->custom_css);
     g_free(m->unsupported_why);
     g_free(m);
 }
@@ -276,6 +279,8 @@ gboolean ks_module_open(KsModule *m, GError **err)
         ks_module_close(m);
         return FALSE;
     }
+    m->rules = ks_rules_new(m->verse_rules, &m->rules_invalid);
+    m->css = ks_style_sheet_new(m->custom_css);
     return TRUE;
 
 fail:
@@ -292,14 +297,18 @@ void ks_module_close(KsModule *m)
     if (m->db)
         sqlite3_close(m->db);
     m->db = NULL;
+    g_clear_pointer(&m->rules, ks_rules_free);
+    g_clear_pointer(&m->css, ks_style_sheet_free);
 }
 
-/* Column 'col' of the current row as valid UTF-8 (fixed up if needed);
- * *fixed is set to a string to g_free() when a copy was made. */
-static const char *row_text(sqlite3_stmt *st, int col, char **fixed, gboolean *was_valid)
+/* Column 'col' of the current row as valid UTF-8 (fixed up if needed)
+ * with the VerseRules applied; *fixed is set to a string to g_free() when
+ * a copy was made. */
+static const char *row_text(const KsModule *m, sqlite3_stmt *st, int col, char **fixed, gboolean *was_valid)
 {
     const char *t = (const char *)sqlite3_column_text(st, col);
     int n = sqlite3_column_bytes(st, col);
+    char *ruled;
 
     *fixed = NULL;
     *was_valid = TRUE;
@@ -308,7 +317,13 @@ static const char *row_text(sqlite3_stmt *st, int col, char **fixed, gboolean *w
     if (!g_utf8_validate(t, n, NULL)) {
         *was_valid = FALSE;
         *fixed = g_utf8_make_valid(t, n);
-        return *fixed;
+        t = *fixed;
+    }
+    ruled = m->rules ? ks_rules_apply(m->rules, t) : NULL;
+    if (ruled) {
+        g_free(*fixed);
+        *fixed = ruled;
+        t = ruled;
     }
     return t;
 }
@@ -325,7 +340,7 @@ int ks_module_chapter(KsModule *m, int book, int chapter, KsVerseCb cb, void *da
     while (sqlite3_step(m->st_chapter) == SQLITE_ROW) {
         char *fixed;
         gboolean valid;
-        const char *text = row_text(m->st_chapter, 1, &fixed, &valid);
+        const char *text = row_text(m, m->st_chapter, 1, &fixed, &valid);
 
         cb(sqlite3_column_int(m->st_chapter, 0), text, data);
         g_free(fixed);
@@ -346,7 +361,7 @@ int ks_module_foreach(KsModule *m, KsAllCb cb, void *data)
     while (sqlite3_step(st) == SQLITE_ROW) {
         char *fixed;
         gboolean valid;
-        const char *text = row_text(st, 3, &fixed, &valid);
+        const char *text = row_text(m, st, 3, &fixed, &valid);
 
         cb(sqlite3_column_int(st, 0), sqlite3_column_int(st, 1), sqlite3_column_int(st, 2), text, valid, data);
         g_free(fixed);

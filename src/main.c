@@ -49,10 +49,12 @@ static int cli_dump(char **files, const char *text)
     sqlite3_bind_int(st, 4, r.verse ? to : G_MAXINT);
     while (sqlite3_step(st) == SQLITE_ROW) {
         const char *t = (const char *)sqlite3_column_text(st, 1);
-        char *plain = ks_gbf_plain(t ? t : "");
+        char *ruled = m->rules ? ks_rules_apply(m->rules, t ? t : "") : NULL;
+        char *plain = ks_gbf_plain(ruled ? ruled : t ? t : "", m->css);
 
         printf("%d %s\n", sqlite3_column_int(st, 0), plain);
         g_free(plain);
+        g_free(ruled);
     }
     sqlite3_finalize(st);
     ks_module_free(m);
@@ -60,6 +62,7 @@ static int cli_dump(char **files, const char *text)
 }
 
 typedef struct {
+    const KsStyleSheet *css;
     int verses, invalid_utf8, stray_lt;
     GHashTable *unknown; /* tag name -> count */
     char where[64];
@@ -90,7 +93,7 @@ static void check_verse(int book, int chapter, int verse, const char *text, gboo
     if (!valid)
         c->invalid_utf8++;
     g_snprintf(c->where, sizeof c->where, "%d:%d:%d", book, chapter, verse);
-    ks_gbf_parse(text, check_span, c);
+    ks_gbf_parse(text, c->css, check_span, c);
 }
 
 static int cli_check(char **files)
@@ -123,6 +126,7 @@ static int cli_check(char **files)
             continue;
         }
         c.unknown = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+        c.css = m->css;
         t0 = g_get_monotonic_time();
         ks_module_foreach(m, check_verse, &c);
         for (int b = 1; b <= KS_MAX_BOOK; b++)
@@ -146,6 +150,9 @@ static int cli_check(char **files)
         }
         if (c.stray_lt)
             printf("\n  note: %d text spans keep a literal '<'", c.stray_lt);
+        if (m->rules || m->rules_invalid)
+            printf("\n  note: %d verse rules applied, %d skipped (invalid)", ks_rules_count(m->rules),
+                   m->rules_invalid);
         printf("\n");
         g_hash_table_destroy(c.unknown);
         ks_module_free(m);

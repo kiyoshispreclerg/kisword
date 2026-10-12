@@ -89,9 +89,29 @@ static void newline(Render *r)
         put(r, "\n", 1, NULL, 0);
 }
 
-static int style_tags(Render *r, unsigned st, int indent, GtkTextTag **out)
+/* Foreground colors from classes and <font>: one tag per color, made the
+ * first time it is seen. */
+static GtkTextTag *color_tag(KsView *v, const char *color)
+{
+    char name[24];
+    GtkTextTag *t;
+
+    g_snprintf(name, sizeof name, "fg%s", color);
+    t = gtk_text_tag_table_lookup(v->table, name);
+    if (!t) {
+        t = gtk_text_tag_new(name);
+        g_object_set(t, "foreground", color, NULL);
+        gtk_text_tag_table_add(v->table, t);
+        g_object_unref(t);
+    }
+    return t;
+}
+
+static int style_tags(Render *r, const KsSpan *sp, GtkTextTag **out)
 {
     KsView *v = r->v;
+    unsigned st = sp->style;
+    int indent = sp->indent;
     int n = 0;
 
     if (indent > 0)
@@ -112,6 +132,8 @@ static int style_tags(Render *r, unsigned st, int indent, GtkTextTag **out)
         out[n++] = v->t_sub;
     if (st & KS_ST_TITLE)
         out[n++] = v->t_title;
+    if (sp->color)
+        out[n++] = color_tag(v, sp->color);
     return n;
 }
 
@@ -152,6 +174,8 @@ static void span_cb(const KsSpan *sp, void *data)
     GtkTextTag *tags[12];
     gboolean title = (sp->style & KS_ST_TITLE) != 0;
 
+    if (sp->style & KS_ST_HIDDEN)
+        return;
     switch (sp->kind) {
     case KS_SPAN_TEXT: {
         const char *t = sp->text;
@@ -168,7 +192,7 @@ static void span_cb(const KsSpan *sp, void *data)
             break;
         if (!title)
             ensure_num(r);
-        put(r, t, len, tags, style_tags(r, sp->style, sp->indent, tags));
+        put(r, t, len, tags, style_tags(r, sp, tags));
         break;
     }
     case KS_SPAN_STRONG:
@@ -263,7 +287,7 @@ static void render(KsView *v, int scroll_verse)
         r.num_pending = TRUE;
         r.in_title = FALSE;
         r.prev_strong = FALSE;
-        ks_gbf_parse(kv->text, span_cb, &r);
+        ks_gbf_parse(kv->text, v->mod->css, span_cb, &r);
         title_edge(&r, FALSE);
         ensure_num(&r);
         kv->end = gtk_text_iter_get_offset(&r.it);
@@ -383,46 +407,6 @@ static void popup_show(KsView *v, const char *markup, int x, int y)
     gdk_keyboard_grab(gw, TRUE, GDK_CURRENT_TIME);
 }
 
-static void markup_cb(const KsSpan *sp, void *data)
-{
-    GString *g = data;
-    char *esc;
-
-    switch (sp->kind) {
-    case KS_SPAN_TEXT:
-        esc = g_markup_escape_text(sp->text, sp->len);
-        if (sp->style & KS_ST_ITALIC)
-            g_string_append(g, "<i>");
-        if (sp->style & KS_ST_BOLD)
-            g_string_append(g, "<b>");
-        if (sp->style & KS_ST_UNDERLINE)
-            g_string_append(g, "<u>");
-        if (sp->style & KS_ST_SUP)
-            g_string_append(g, "<sup>");
-        if (sp->style & KS_ST_SUB)
-            g_string_append(g, "<sub>");
-        g_string_append(g, esc);
-        if (sp->style & KS_ST_SUB)
-            g_string_append(g, "</sub>");
-        if (sp->style & KS_ST_SUP)
-            g_string_append(g, "</sup>");
-        if (sp->style & KS_ST_UNDERLINE)
-            g_string_append(g, "</u>");
-        if (sp->style & KS_ST_BOLD)
-            g_string_append(g, "</b>");
-        if (sp->style & KS_ST_ITALIC)
-            g_string_append(g, "</i>");
-        g_free(esc);
-        break;
-    case KS_SPAN_PARA:
-    case KS_SPAN_LINE:
-        g_string_append_c(g, '\n');
-        break;
-    default:
-        break;
-    }
-}
-
 static gboolean is_link(KsView *v, const GtkTextIter *it)
 {
     return gtk_text_iter_has_tag(it, v->t_strong) || gtk_text_iter_has_tag(it, v->t_note);
@@ -500,13 +484,12 @@ static gboolean release_cb(GtkWidget *w, GdkEventButton *e, KsView *v)
 
         if (n) {
             char *ref = ks_ref_format(v->book, v->chapter, n->verse, 0);
-            GString *g = g_string_new(NULL);
+            char *body = ks_gbf_markup(n->raw);
             char *head = g_markup_printf_escaped("<b>%s</b>\n", ref);
 
-            g_string_append(g, head);
-            ks_gbf_parse(n->raw, markup_cb, g);
-            markup = g_string_free(g, FALSE);
+            markup = g_strconcat(head, body, NULL);
             g_free(head);
+            g_free(body);
             g_free(ref);
         }
     }
@@ -570,7 +553,7 @@ static void copy_cb(GtkTextView *tv, KsView *v)
     g_string_printf(g, "%s (%s)\n", ref, ks_module_label(v->mod));
     for (int i = i0; i <= i1; i++) {
         const KsVerse *kv = &g_array_index(v->verses, KsVerse, i);
-        char *plain = ks_gbf_plain(kv->text);
+        char *plain = ks_gbf_plain(kv->text, v->mod->css);
 
         if (i1 > i0)
             g_string_append_printf(g, "%d %s\n", kv->verse, plain);
