@@ -45,7 +45,7 @@ typedef struct {
     GtkWidget *win, *mod_combo, *book_combo, *chap_spin, *entry, *status;
     GtkWidget *back_btn, *fwd_btn, *back_item, *fwd_item, *info_item, *search_item, *par_item, *opts_item;
     GtkListStore *mod_store, *book_store;
-    GtkCheckMenuItem *chk_strong, *chk_notes, *chk_red, *chk_para;
+    GtkCheckMenuItem *chk_strong, *chk_notes, *chk_red, *chk_para, *chk_stacked;
     guint status_ctx;
 
     GArray *back, *fwd; /* KsPos */
@@ -428,7 +428,8 @@ static void parallels_changed(KsWin *w, gboolean show)
 
     for (guint i = 0; columns && i < w->par->len; i++) {
         KsModule *m = g_ptr_array_index(w->par, i);
-        KsViewOptions opt = { w->cfg->show_strong, w->cfg->show_notes, w->cfg->red_letters, w->cfg->paragraphs };
+        KsViewOptions opt = { w->cfg->show_strong, w->cfg->show_notes, w->cfg->red_letters, w->cfg->paragraphs,
+                              w->cfg->stacked };
         KsView *v = ks_view_new(&opt);
         GtkWidget *col = gtk_vbox_new(FALSE, 0), *head = column_head(m, w);
 
@@ -693,12 +694,14 @@ static void apply_options(KsWin *w)
         gtk_check_menu_item_get_active(w->chk_notes),
         gtk_check_menu_item_get_active(w->chk_red),
         gtk_check_menu_item_get_active(w->chk_para),
+        gtk_check_menu_item_get_active(w->chk_stacked),
     };
 
     w->cfg->show_strong = o.show_strong;
     w->cfg->show_notes = o.show_notes;
     w->cfg->red_letters = o.red_letters;
     w->cfg->paragraphs = o.paragraphs;
+    w->cfg->stacked = o.stacked;
     w->syncing = TRUE;
     ks_view_set_options(w->view, &o);
     for (guint i = 0; i < w->par_views->len; i++)
@@ -1069,6 +1072,7 @@ static GtkWidget *build_menus(KsWin *w, GtkAccelGroup *ag)
     w->chk_notes = check_item(m, ag, _("_Footnotes"), 0, w->cfg->show_notes, w);
     w->chk_red = check_item(m, ag, _("Words of Jesus in _red"), 0, w->cfg->red_letters, w);
     w->chk_para = check_item(m, ag, _("_Paragraph layout"), 0, w->cfg->paragraphs, w);
+    w->chk_stacked = check_item(m, ag, _("_Interlinear in columns"), 0, w->cfg->stacked, w);
     separator(m);
     w->par_item = menu_item(m, ag, _("Pa_rallel Bibles…"), GDK_KEY_F8, 0, cmd_parallel, w);
     w->opts_item = gtk_menu_item_new_with_mnemonic(_("Module _options"));
@@ -1202,7 +1206,7 @@ void ks_window_run(KsConfig *cfg, char **files, const char *ref)
     KsWin *w = g_new0(KsWin, 1);
     GtkAccelGroup *ag = gtk_accel_group_new();
     GtkWidget *vbox, *paned;
-    KsViewOptions opt = { cfg->show_strong, cfg->show_notes, cfg->red_letters, cfg->paragraphs };
+    KsViewOptions opt = { cfg->show_strong, cfg->show_notes, cfg->red_letters, cfg->paragraphs, cfg->stacked };
     char *default_dir = ks_config_modules_dir();
     GPtrArray *dirs = g_ptr_array_new(), *extra = g_ptr_array_new();
     KsModule *m;

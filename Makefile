@@ -30,7 +30,7 @@ LIBINTL := $(shell echo 'int main(void){return 0;}' | $(CC) -x c - -o /dev/null 
 LINGUAS := $(shell test -f po/LINGUAS && grep -v '^\#' po/LINGUAS)
 MOFILES := $(foreach lang,$(LINGUAS),po/$(lang).mo)
 
-SRCS := src/main.c src/window.c src/searchpane.c src/render.c src/module.c src/gbf.c src/style.c src/rules.c src/html.c \
+SRCS := src/main.c src/window.c src/searchpane.c src/render.c src/versebox.c src/module.c src/gbf.c src/style.c src/rules.c src/html.c \
 	src/search.c src/boxes.c src/books.c src/ref.c src/config.c
 OBJS := $(SRCS:.c=.o)
 HDRS := $(wildcard src/*.h)

@@ -15,6 +15,7 @@ typedef struct {
     gboolean show_notes;
     gboolean red_letters;
     gboolean paragraphs; /* paragraph layout when the chapter has <CM> marks */
+    gboolean stacked;    /* interlinears and annotations in boxes (versebox.c) */
 } KsViewOptions;
 
 typedef struct KsView KsView;

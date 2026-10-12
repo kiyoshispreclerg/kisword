@@ -455,13 +455,24 @@ O que foi preciso, com o módulo onde apareceu:
 - Texto: `\r`/`\n` gravados no verso são espaço (ACF terminava todo verso em `\r`),
   BOM no início do verso é descartado (ARC2009), títulos de módulo em uma linha.
 
-Limites que ficam:
+Interlineares e anotações linguísticas em caixas (feito depois, comparado com capturas
+do MySword em OHB Gn 1, BHSE Gn 1 e OGNTla Jo 1):
 
-- Interlineares hebraicos (OpenHB, ETCBC, BHSE*) e os de anotação linguística
-  (OpenGNTOTLA, OpenHB-LA) dependem do layout HTML do MySword — cada palavra é uma
-  coluna `inline-block` com várias linhas. Aqui ficam completos mas densos, em linha
-  corrida; com F9 (sem Strong) melhoram. Empilhar exigiria outro widget.
-- Os gregos interlineares (berean-interlinear, ACV, OpenGNT*) e os demais ficam bem.
+- `ks_gbf_parse_boxes()` relata caixas: bloco `<Q>` e elementos que o `CustomCSS` torna
+  `inline-block`/`table`/`block` (com borda, `text-align`, `direction`); `<X>`/`<E>`/`<T>`
+  viram linhas da coluna. `boxes.c` monta a árvore; o Strong e a morfologia da própria
+  palavra viram linhas abaixo dela, como no OHB.
+- `versebox.c`: um widget por verso (não por palavra — Sl 119 são 176 widgets),
+  ancorado no `GtkTextView`, com layout de fluxo próprio (células lado a lado com quebra,
+  blocos em largura total, linha de base comum, bordas) e um bidi mínimo: em caixa RTL as
+  palavras vão da direita, mas um trecho LTR ("the beginning") mantém a ordem; neutros
+  ("|") seguem a próxima palavra com direção; LRM/RLM contam.
+- Detalhe do GTK2: o `GtkTextView` não refaz a altura da linha quando um filho ancorado
+  muda de tamanho; aplicar e tirar uma tag que "afeta tamanho" sobre a âncora força isso,
+  fora do `size-allocate` (num idle).
+- Custo: Sl 119 no BHSE ~300 ms para montar e ~76 MB de RSS (as layouts ficam em
+  memória); OpenHB Sl 119 ~220 ms; mudar a largura ~2 ms. Exibir → Interlinear em colunas
+  desliga, voltando ao texto corrido.
 - BHSE/BHSEk custam ~0,4 ms por verso nas regras: ~10 ms por capítulo, ~10 s para
   indexar a busca (em segundo plano).
 

@@ -51,9 +51,13 @@ Not yet: dictionaries and commentaries (see
 Tested against a collection of 125 MySword Bibles: all open, and all but
 the two encrypted ones parse without unknown tags — titles, poetry lines,
 interlinears, cross references, the HTML that VerseRules produce, modules
-mixing right-to-left and left-to-right testaments. Interlinears built for
-MySword's stacked HTML layout (word over gloss over morphology) are shown in
-running text: complete, but dense.
+mixing right-to-left and left-to-right testaments.
+
+Interlinears and linguistically annotated modules are laid out as in
+MySword: each word a column (the word over its Strong's number,
+morphology, transliteration and gloss) flowing right to left for Hebrew,
+and annotation boxes nested with their borders. View → Interlinear in
+columns turns that off for running text.
 
 **Encrypted modules are not supported.** Some MySword modules (for example the
 ones with `encryption` set in their `Details` table) are protected by MySword

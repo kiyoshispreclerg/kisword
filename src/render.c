@@ -6,9 +6,11 @@
  * touching the database. Each verse gets a mark "v<N>" for scrolling. */
 #include "render.h"
 
+#include "boxes.h"
 #include "gbf.h"
 #include "ks_i18n.h"
 #include "ref.h"
+#include "versebox.h"
 
 #include <stdarg.h>
 #include <string.h>
@@ -39,7 +41,7 @@ struct KsView {
     GtkTextTagTable *table;
     GtkTextTag *t_hl, *t_indent[KS_MAX_INDENT + 1], *t_verse, *t_italic, *t_bold, *t_underline,
         *t_red, *t_otquote, *t_sup, *t_sub, *t_title, *t_strong, *t_note, *t_label, *t_group, *t_rtl,
-        *t_ltr, *t_absent, *t_strike, *t_small, *t_gloss, *t_translit, *t_xref;
+        *t_ltr, *t_absent, *t_strike, *t_small, *t_gloss, *t_translit, *t_xref, *t_relayout;
     GdkCursor *hand, *ibeam;
     gboolean over_link;
     KsViewOptions opt;
@@ -51,6 +53,11 @@ struct KsView {
     GArray *verses; /* KsVerse, in verse order, then module order */
     GArray *notes;  /* KsNote */
     GtkWidget *popup;
+
+    GPtrArray *boxes; /* verse box widgets in the text now */
+    int box_width;
+    guint resize_idle;
+    KsPalette pal;
 };
 
 /* ---- rendering ---------------------------------------------------------- */
@@ -314,14 +321,97 @@ static void clear_chapter(KsView *v)
     g_array_set_size(v->verses, 0);
 }
 
+static char *strong_markup(const char *num)
+{
+    return g_markup_printf_escaped("<b>Strong %s</b>\n<small>%s</small>", num, _("Dictionaries are not supported yet."));
+}
+
+static void popup_show(KsView *v, const char *markup, int x, int y);
+
+/* A Strong's number or note marker clicked in a verse box. */
+static void box_link_cb(GtkWidget *w, const KsItem *it, int x_root, int y_root, void *data)
+{
+    KsView *v = data;
+    char *markup;
+
+    if (it->kind == KS_SPAN_STRONG) {
+        markup = strong_markup(it->text);
+    } else {
+        int verse = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(w), "verse"));
+        char *ref = ks_ref_format(v->book, v->chapter, verse, 0);
+        char *head = g_markup_printf_escaped("<b>%s</b>\n", ref);
+        char *body = ks_gbf_markup(it->extra ? it->extra : "");
+
+        markup = g_strconcat(head, body, NULL);
+        g_free(body);
+        g_free(head);
+        g_free(ref);
+    }
+    popup_show(v, markup, x_root, y_root);
+    g_free(markup);
+}
+
+/* The verse as a box widget, anchored in the text on a line of its own. */
+static void add_box(KsView *v, Render *r, const KsVerse *kv, KsBox *box, GPtrArray *anchors)
+{
+    const KsModule *m = v->mods[kv->mod];
+    int to = MAX(v->hl_to, v->hl_from);
+    KsVerseBoxOptions o = { 0 };
+    GtkWidget *w;
+
+    o.verse = kv->verse;
+    o.label = v->nmods > 1 ? ks_module_label(m) : NULL;
+    o.rtl = ks_module_rtl(m, v->book);
+    o.show_strong = v->opt.show_strong;
+    o.show_notes = v->opt.show_notes;
+    o.red_letters = v->opt.red_letters;
+    o.highlight = v->hl_from && kv->verse >= v->hl_from && kv->verse <= to;
+    o.font = gtk_widget_get_style(v->text)->font_desc;
+    o.palette = &v->pal;
+    w = ks_verse_box_new(box, &o, box_link_cb, v);
+    g_object_set_data(G_OBJECT(w), "verse", GINT_TO_POINTER(kv->verse));
+    g_ptr_array_add(v->boxes, w);
+    g_ptr_array_add(anchors, gtk_text_buffer_create_child_anchor(r->b, &r->it));
+    g_object_set_data(G_OBJECT(w), "anchor", g_ptr_array_index(anchors, anchors->len - 1));
+    r->line_start = FALSE;
+}
+
+/* A new width for a verse box. GTK2's text view doesn't notice that an
+ * anchored child changed height; touching a tag on the anchor makes it
+ * lay that line out again. */
+static void set_box_width(KsView *v, GtkWidget *w, int width)
+{
+    GtkTextChildAnchor *anchor = g_object_get_data(G_OBJECT(w), "anchor");
+    GtkTextBuffer *b = gtk_text_view_get_buffer(GTK_TEXT_VIEW(v->text));
+    GtkTextIter a, z;
+
+    ks_verse_box_set_width(w, width);
+    if (!anchor || gtk_text_child_anchor_get_deleted(anchor))
+        return;
+    gtk_text_buffer_get_iter_at_child_anchor(b, &a, anchor);
+    z = a;
+    gtk_text_iter_forward_char(&z);
+    gtk_text_buffer_apply_tag(b, v->t_relayout, &a, &z);
+    gtk_text_buffer_remove_tag(b, v->t_relayout, &a, &z);
+}
+
+static void drop_boxes(KsView *v)
+{
+    for (guint i = 0; i < v->boxes->len; i++)
+        gtk_widget_destroy(g_ptr_array_index(v->boxes, i));
+    g_ptr_array_set_size(v->boxes, 0);
+}
+
 static void render(KsView *v, int scroll_verse)
 {
     GtkTextBuffer *b = gtk_text_buffer_new(v->table);
     GtkTextMark *mark = NULL;
     GtkTextIter start;
     Render r = { 0 };
+    GPtrArray *anchors = g_ptr_array_new();
 
     clear_notes(v);
+    drop_boxes(v);
     r.v = v;
     r.b = b;
     r.line_start = TRUE;
@@ -336,11 +426,17 @@ static void render(KsView *v, int scroll_verse)
         gboolean group = i == 0 || g_array_index(v->verses, KsVerse, i - 1).verse != kv->verse;
         char name[24];
 
+        KsBox *box = v->opt.stacked && ks_boxes_wanted(kv->text, m->css) ? ks_boxes_build(kv->text, m->css) : NULL;
+
+        if (box)
+            newline(&r);
         g_snprintf(name, sizeof name, "v%d", kv->verse);
         kv->start = gtk_text_iter_get_offset(&r.it);
         if (!gtk_text_buffer_get_mark(b, name))
             gtk_text_buffer_create_mark(b, name, &r.it, TRUE);
-        if (v->nmods > 1) {
+        if (box) {
+            add_box(v, &r, kv, box, anchors);
+        } else if (v->nmods > 1) {
             GtkTextTag *tags[1] = { v->t_label };
 
             /* An RLM first: Pango takes a paragraph's direction from its
@@ -350,13 +446,15 @@ static void render(KsView *v, int scroll_verse)
             put(&r, ks_module_label(m), strlen(ks_module_label(m)), tags, 1);
             put(&r, " ", 1, NULL, 0);
         }
-        r.verse = kv->verse;
-        r.num_pending = TRUE;
-        r.in_title = FALSE;
-        r.prev_strong = FALSE;
-        ks_gbf_parse(kv->text, m->css, span_cb, &r);
-        title_edge(&r, FALSE);
-        ensure_num(&r);
+        if (!box) {
+            r.verse = kv->verse;
+            r.num_pending = TRUE;
+            r.in_title = FALSE;
+            r.prev_strong = FALSE;
+            ks_gbf_parse(kv->text, m->css, span_cb, &r);
+            title_edge(&r, FALSE);
+            ensure_num(&r);
+        }
         kv->end = gtk_text_iter_get_offset(&r.it);
         if (!r.line_start)
             put(&r, r.para ? " " : "\n", 1, NULL, 0);
@@ -407,6 +505,20 @@ static void render(KsView *v, int scroll_verse)
     gtk_text_view_set_pixels_below_lines(GTK_TEXT_VIEW(v->text), r.para ? 8 : 4);
     gtk_text_view_set_buffer(GTK_TEXT_VIEW(v->text), b);
     g_object_unref(b);
+    if (!v->box_width) {
+        GtkAllocation al;
+
+        gtk_widget_get_allocation(v->text, &al);
+        v->box_width = al.width > 100 ? al.width - 2 * MARGIN - 6 : 600;
+    }
+    for (guint i = 0; i < v->boxes->len; i++) {
+        GtkWidget *w = g_ptr_array_index(v->boxes, i);
+
+        gtk_text_view_add_child_at_anchor(GTK_TEXT_VIEW(v->text), w, g_ptr_array_index(anchors, i));
+        set_box_width(v, w, v->box_width);
+        gtk_widget_show(w);
+    }
+    g_ptr_array_free(anchors, TRUE);
 
     if (scroll_verse) {
         char name[24];
@@ -562,8 +674,7 @@ static gboolean release_cb(GtkWidget *w, GdkEventButton *e, KsView *v)
             gtk_text_iter_backward_to_tag_toggle(&s, v->t_strong);
         gtk_text_iter_forward_to_tag_toggle(&z, v->t_strong);
         num = gtk_text_buffer_get_text(b, &s, &z, FALSE);
-        markup = g_markup_printf_escaped("<b>Strong %s</b>\n<small>%s</small>", num,
-                                         _("Dictionaries are not supported yet."));
+        markup = strong_markup(num);
         g_free(num);
     } else if (gtk_text_iter_has_tag(&it, v->t_note)) {
         const KsNote *n = note_at(v, gtk_text_iter_get_offset(&it));
@@ -690,6 +801,36 @@ static void style_set_cb(GtkWidget *w, GtkStyle *prev, KsView *v)
     g_object_set(v->t_absent, "foreground-gdk", &dim, NULL);
     g_object_set(v->t_translit, "foreground-gdk", &dim, NULL);
     g_object_set(v->t_hl, "background-gdk", &hl, NULL);
+    v->pal.text = st->text[GTK_STATE_NORMAL];
+    v->pal.base = st->base[GTK_STATE_NORMAL];
+    v->pal.dim = dim;
+    v->pal.hl = hl;
+    for (guint i = 0; i < v->boxes->len; i++)
+        gtk_widget_queue_draw(g_ptr_array_index(v->boxes, i));
+}
+
+static gboolean resize_boxes_cb(gpointer data)
+{
+    KsView *v = data;
+
+    v->resize_idle = 0;
+    for (guint i = 0; i < v->boxes->len; i++)
+        set_box_width(v, g_ptr_array_index(v->boxes, i), v->box_width);
+    return G_SOURCE_REMOVE;
+}
+
+/* Verse boxes take the width of the text. Not from inside the text view's
+ * own size-allocate: the lines it is laying out would keep the old heights. */
+static void text_allocate_cb(GtkWidget *w, GtkAllocation *a, KsView *v)
+{
+    int width = a->width - 2 * MARGIN - 6;
+
+    (void)w;
+    if (width == v->box_width || width < 50)
+        return;
+    v->box_width = width;
+    if (v->boxes->len && !v->resize_idle)
+        v->resize_idle = g_idle_add(resize_boxes_cb, v);
 }
 
 static GtkTextTag *new_tag(KsView *v, const char *name, const char *first, ...) G_GNUC_NULL_TERMINATED;
@@ -715,6 +856,8 @@ KsView *ks_view_new(const KsViewOptions *opt)
     v->opt = *opt;
     v->verses = g_array_new(FALSE, FALSE, sizeof(KsVerse));
     v->notes = g_array_new(FALSE, FALSE, sizeof(KsNote));
+    v->boxes = g_ptr_array_new();
+    v->box_width = 0; /* until the view has a size */
     v->table = gtk_text_tag_table_new();
 
     /* Priority follows creation order: later tags win on conflicts. */
@@ -748,6 +891,11 @@ KsView *ks_view_new(const KsViewOptions *opt)
     v->t_small = new_tag(v, "small", "scale", PANGO_SCALE_SMALL, NULL);
     v->t_gloss = new_tag(v, "gloss", "scale", PANGO_SCALE_SMALL, "foreground", GLOSS_COLOR, NULL);
     v->t_translit = new_tag(v, "translit", "scale", PANGO_SCALE_SMALL, "style", PANGO_STYLE_ITALIC, NULL);
+    /* A size property, or GTK2 doesn't relayout where the tag goes. */
+    v->t_relayout = gtk_text_tag_new("relayout");
+    g_object_set(v->t_relayout, "pixels-above-lines", 2, NULL);
+    gtk_text_tag_table_add(v->table, v->t_relayout);
+    g_object_unref(v->t_relayout);
     v->t_xref = new_tag(v, "xref", "foreground", LINK_COLOR, "scale", PANGO_SCALE_SMALL, "weight",
                         PANGO_WEIGHT_NORMAL, NULL);
 
@@ -774,6 +922,7 @@ KsView *ks_view_new(const KsViewOptions *opt)
     g_signal_connect(v->text, "motion-notify-event", G_CALLBACK(motion_cb), v);
     g_signal_connect(v->text, "copy-clipboard", G_CALLBACK(copy_cb), v);
     g_signal_connect(v->text, "style-set", G_CALLBACK(style_set_cb), v);
+    g_signal_connect(v->text, "size-allocate", G_CALLBACK(text_allocate_cb), v);
     return v;
 }
 
@@ -799,6 +948,8 @@ void ks_view_set_options(KsView *v, const KsViewOptions *opt)
 void ks_view_set_font(KsView *v, const PangoFontDescription *font)
 {
     gtk_widget_modify_font(v->text, (PangoFontDescription *)font);
+    if (v->boxes->len) /* they measured their text with the old font */
+        render(v, ks_view_top_verse(v));
 }
 
 typedef struct {
@@ -854,6 +1005,7 @@ void ks_view_message(KsView *v, const char *text)
 
     popup_close(v);
     clear_chapter(v);
+    drop_boxes(v);
     v->mod = NULL;
     v->nmods = 0;
     gtk_text_buffer_set_text(b, text, -1);
@@ -956,6 +1108,10 @@ void ks_view_free(KsView *v)
         return;
     popup_close(v);
     clear_chapter(v);
+    drop_boxes(v);
+    g_ptr_array_free(v->boxes, TRUE);
+    if (v->resize_idle)
+        g_source_remove(v->resize_idle);
     gtk_widget_destroy(v->scroll);
     g_array_free(v->verses, TRUE);
     g_array_free(v->notes, TRUE);

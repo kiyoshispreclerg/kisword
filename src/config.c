@@ -79,6 +79,7 @@ KsConfig *ks_config_load(void)
     c->show_strong = TRUE;
     c->show_notes = TRUE;
     c->red_letters = TRUE;
+    c->stacked = TRUE;
     c->width = 760;
     c->height = 680;
 
@@ -98,6 +99,7 @@ KsConfig *ks_config_load(void)
         get_bool(kf, "show_notes", &c->show_notes);
         get_bool(kf, "red_letters", &c->red_letters);
         get_bool(kf, "paragraphs", &c->paragraphs);
+        get_bool(kf, "stacked", &c->stacked);
         get_int(kf, "width", &c->width);
         get_int(kf, "height", &c->height);
     }
@@ -133,6 +135,7 @@ void ks_config_save(const KsConfig *c)
     g_key_file_set_boolean(kf, GROUP, "show_notes", c->show_notes);
     g_key_file_set_boolean(kf, GROUP, "red_letters", c->red_letters);
     g_key_file_set_boolean(kf, GROUP, "paragraphs", c->paragraphs);
+    g_key_file_set_boolean(kf, GROUP, "stacked", c->stacked);
     g_key_file_set_integer(kf, GROUP, "width", c->width);
     g_key_file_set_integer(kf, GROUP, "height", c->height);
 

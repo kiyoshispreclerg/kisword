@@ -17,6 +17,7 @@ typedef struct {
     char *font;           /* Pango font description string */
     char *book_names;     /* "pt", "en", or NULL = from the locale */
     gboolean show_strong, show_notes, red_letters, paragraphs;
+    gboolean stacked;     /* interlinears and annotated modules laid out in boxes */
     int width, height;
 } KsConfig;
 
