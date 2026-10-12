@@ -151,8 +151,24 @@ static void apply_decls(KsClassStyle *cs, const char *d, const char *end)
             } else if (prop_is(p, pe - p, "display")) {
                 if (value_has(v, ve - v, "none"))
                     cs->style |= KS_ST_HIDDEN;
-                else if (value_has(v, ve - v, "block") && !value_has(v, ve - v, "inline"))
-                    cs->block = TRUE;
+                else if (value_has(v, ve - v, "inline-block") || value_has(v, ve - v, "table-cell"))
+                    cs->display = KS_DISPLAY_CELL;
+                else if (value_has(v, ve - v, "table"))
+                    cs->display = KS_DISPLAY_TABLE;
+                else if (value_has(v, ve - v, "block"))
+                    cs->display = KS_DISPLAY_BLOCK;
+                else if (value_has(v, ve - v, "inline"))
+                    cs->display = KS_DISPLAY_INLINE;
+                cs->block = cs->display == KS_DISPLAY_BLOCK || cs->display == KS_DISPLAY_TABLE;
+            } else if (prop_is(p, pe - p, "border") || prop_is(p, pe - p, "border-style")) {
+                cs->border = !value_has(v, ve - v, "none") && !(ve - v == 1 && *v == '0');
+            } else if (prop_is(p, pe - p, "text-align")) {
+                cs->align = value_has(v, ve - v, "center") ? KS_ALIGN_CENTER
+                            : value_has(v, ve - v, "right") ? KS_ALIGN_END
+                            : value_has(v, ve - v, "left") ? KS_ALIGN_START
+                                                           : cs->align;
+            } else if (prop_is(p, pe - p, "direction")) {
+                cs->dir = value_has(v, ve - v, "rtl") ? 1 : -1;
             }
         }
         d = stop + 1;
@@ -313,6 +329,26 @@ const KsClassStyle *ks_style_sheet_class(const KsStyleSheet *css, const char *el
         g_free(key);
     }
     return cs ? cs : lookup(css->classes, name, len);
+}
+
+static gboolean any_box(GHashTable *t)
+{
+    GHashTableIter it;
+    gpointer k, v;
+
+    g_hash_table_iter_init(&it, t);
+    while (g_hash_table_iter_next(&it, &k, &v)) {
+        const KsClassStyle *cs = v;
+
+        if (cs->display == KS_DISPLAY_CELL || cs->display == KS_DISPLAY_TABLE)
+            return TRUE;
+    }
+    return FALSE;
+}
+
+gboolean ks_style_sheet_has_boxes(const KsStyleSheet *css)
+{
+    return css && (any_box(css->classes) || any_box(css->elements));
 }
 
 const KsClassStyle *ks_style_sheet_element(const KsStyleSheet *css, const char *name, int len)

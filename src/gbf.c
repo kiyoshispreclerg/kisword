@@ -14,6 +14,7 @@ typedef struct {
     unsigned style;
     const char *color;
     gboolean block;
+    unsigned box; /* KS_BOX_*, 0: not a box */
 } Frame;
 
 typedef struct {
@@ -27,17 +28,18 @@ typedef struct {
     int depth;
     gboolean space; /* the text so far ends in a space (or there is none) */
     gboolean in_q;  /* inside an interlinear <Q> block */
+    gboolean boxes; /* ks_gbf_parse_boxes() */
 } Parser;
 
 static void emit(Parser *ps, KsSpanKind kind, const char *text, int len)
 {
-    KsSpan sp = { kind, ps->style, ps->indent, text, len, NULL, 0, ps->color };
+    KsSpan sp = { kind, ps->style, ps->indent, text, len, NULL, 0, ps->color, 0 };
 
     if (kind == KS_SPAN_TEXT && len <= 0)
         return;
     /* A word of an interlinear is a column of lines in MySword (BHSE puts
      * <br> between them); here it stays on one line. */
-    if (kind == KS_SPAN_LINE && ps->in_q) {
+    if (kind == KS_SPAN_LINE && ps->in_q && !ps->boxes) {
         if (ps->space)
             return;
         kind = KS_SPAN_TEXT;
@@ -57,7 +59,7 @@ static const char *content_span(Parser *ps, KsSpanKind kind, const char *after, 
 {
     const char *end = strstr(after, close);
     const char *stop = end ? end : after + strlen(after);
-    KsSpan sp = { kind, ps->style, ps->indent, after, (int)(stop - after), mark, mark_len, ps->color };
+    KsSpan sp = { kind, ps->style, ps->indent, after, (int)(stop - after), mark, mark_len, ps->color, 0 };
 
     ps->cb(&sp, ps->data);
     return end ? end + strlen(close) : stop;
@@ -95,7 +97,48 @@ static const char *attr(const char *s, int n, const char *key, int *len)
     return NULL;
 }
 
-static void push(Parser *ps, const char *tag, gboolean block)
+static void emit_box(Parser *ps, KsSpanKind kind, unsigned box)
+{
+    KsSpan sp = { kind, ps->style, ps->indent, NULL, 0, NULL, 0, ps->color, box };
+
+    ps->space = TRUE;
+    ps->cb(&sp, ps->data);
+}
+
+static void merge(KsClassStyle *m, const KsClassStyle *cs)
+{
+    if (!cs)
+        return;
+    m->style |= cs->style;
+    if (cs->color)
+        m->color = cs->color;
+    if (cs->display != KS_DISPLAY_INLINE)
+        m->display = cs->display;
+    m->block = m->block || cs->block;
+    m->border = m->border || cs->border;
+    if (cs->align)
+        m->align = cs->align;
+    if (cs->dir)
+        m->dir = cs->dir;
+}
+
+/* class='a b': every class that is known, in order. */
+static void merge_classes(Parser *ps, const char *tag, const char *v, int vn, KsClassStyle *m)
+{
+    for (int i = 0; i < vn;) {
+        int j = i;
+
+        while (j < vn && v[j] != ' ')
+            j++;
+        merge(m, ks_style_sheet_class(ps->css, tag, v + i, j - i));
+        i = j + 1;
+    }
+}
+
+/* Opens a tag with the merged style of its classes. With boxes, a block or
+ * inline-block opens a box (div_block: a plain <div> is a block too);
+ * without, a block is a line break before and after. */
+static void push(Parser *ps, const char *tag, const KsClassStyle *m, gboolean div_block, unsigned extra)
 {
     Frame *f;
 
@@ -105,18 +148,43 @@ static void push(Parser *ps, const char *tag, gboolean block)
     g_strlcpy(f->name, tag, sizeof f->name);
     f->style = ps->style;
     f->color = ps->color;
-    f->block = block;
-    if (block)
+    f->block = FALSE;
+    f->box = 0;
+    if (ps->boxes && (m->display != KS_DISPLAY_INLINE || div_block)) {
+        unsigned b = (m->display == KS_DISPLAY_CELL ? KS_BOX_CELL : KS_BOX_BLOCK) | extra;
+
+        if (m->border)
+            b |= KS_BOX_BORDER;
+        if (m->align == KS_ALIGN_CENTER)
+            b |= KS_BOX_CENTER;
+        else if (m->align == KS_ALIGN_END)
+            b |= KS_BOX_END;
+        if (m->dir)
+            b |= m->dir > 0 ? KS_BOX_RTL : KS_BOX_LTR;
+        f->box = b;
+        emit_box(ps, KS_SPAN_BOX_OPEN, b);
+    } else if (m->block) {
+        f->block = TRUE;
         emit(ps, KS_SPAN_LINE, NULL, 0);
+    }
+    ps->style |= m->style;
+    if (m->color)
+        ps->color = m->color;
 }
 
-static void apply_class(Parser *ps, const KsClassStyle *cs)
+/* Closes the frames from the top down to depth i: boxes get their close,
+ * the block at i its line break. */
+static void unwind(Parser *ps, int i)
 {
-    if (!cs)
-        return;
-    ps->style |= cs->style;
-    if (cs->color)
-        ps->color = cs->color;
+    for (int k = ps->depth - 1; k >= i; k--) {
+        ps->style = ps->stack[k].style;
+        ps->color = ps->stack[k].color;
+        if (ps->stack[k].box)
+            emit_box(ps, KS_SPAN_BOX_CLOSE, 0);
+        else if (ps->stack[k].block && k == i)
+            emit(ps, KS_SPAN_LINE, NULL, 0);
+    }
+    ps->depth = i;
 }
 
 /* Closes the innermost open tag of that name (and anything opened inside
@@ -125,43 +193,9 @@ static void pop(Parser *ps, const char *tag)
 {
     for (int i = ps->depth - 1; i >= 0; i--) {
         if (strcmp(ps->stack[i].name, tag) == 0) {
-            ps->style = ps->stack[i].style;
-            ps->color = ps->stack[i].color;
-            ps->depth = i;
-            if (ps->stack[i].block)
-                emit(ps, KS_SPAN_LINE, NULL, 0);
+            unwind(ps, i);
             return;
         }
-    }
-}
-
-/* class='a b': every class that is known, in order. block if any is. */
-static gboolean classes_block(Parser *ps, const char *tag, const char *v, int vn)
-{
-    gboolean block = FALSE;
-
-    for (int i = 0; i < vn;) {
-        int j = i;
-        const KsClassStyle *cs;
-
-        while (j < vn && v[j] != ' ')
-            j++;
-        cs = ks_style_sheet_class(ps->css, tag, v + i, j - i);
-        block = block || (cs && cs->block);
-        i = j + 1;
-    }
-    return block;
-}
-
-static void apply_classes(Parser *ps, const char *tag, const char *v, int vn)
-{
-    for (int i = 0; i < vn;) {
-        int j = i;
-
-        while (j < vn && v[j] != ' ')
-            j++;
-        apply_class(ps, ks_style_sheet_class(ps->css, tag, v + i, j - i));
-        i = j + 1;
     }
 }
 
@@ -288,10 +322,14 @@ static const char *html_tag(Parser *ps, const char *name, int n, const char *aft
             if (next)
                 return next;
         }
-        v = attr(name, n, "class", &vn);
-        push(ps, tag, v && classes_block(ps, tag, v, vn));
-        if (v)
-            apply_classes(ps, tag, v, vn);
+        {
+            KsClassStyle m = { 0 };
+
+            v = attr(name, n, "class", &vn);
+            if (v)
+                merge_classes(ps, tag, v, vn, &m);
+            push(ps, tag, &m, strcmp(tag, "div") == 0, 0);
+        }
         if (strcmp(tag, "font") == 0 && (v = attr(name, n, "color", &vn))) {
             const char *c = ks_style_color(v, vn);
 
@@ -312,8 +350,7 @@ static const char *html_tag(Parser *ps, const char *name, int n, const char *aft
         if (closing) {
             pop(ps, tag);
         } else if (name[n - 1] != '/') {
-            push(ps, tag, el->block);
-            apply_class(ps, el);
+            push(ps, tag, el, FALSE, 0);
         }
         return after;
     }
@@ -335,6 +372,16 @@ static void separate(Parser *ps)
 {
     if (!ps->space)
         emit(ps, KS_SPAN_TEXT, " ", 1);
+}
+
+/* An interlinear layer starts: a line of its own in a box, else set apart
+ * from the word by a space. */
+static void layer(Parser *ps)
+{
+    if (ps->boxes && ps->in_q)
+        emit(ps, KS_SPAN_LINE, NULL, 0);
+    else
+        separate(ps);
 }
 
 /* Tags seen in real modules that carry nothing to show: anchors
@@ -433,18 +480,27 @@ static const char *tag(Parser *ps, const char *name, int n, const char *after)
         switch (name[0]) {
         case 'Q': case 'q':
             ps->in_q = name[0] == 'Q';
+            if (ps->boxes && name[0] == 'Q') {
+                KsClassStyle m = { 0 };
+
+                pop(ps, "Q"); /* an unclosed one before */
+                m.display = KS_DISPLAY_CELL;
+                push(ps, "Q", &m, FALSE, KS_BOX_WORD);
+            } else if (ps->boxes) {
+                pop(ps, "Q");
+            }
             return after;
         case 'H': case 'h': case 'G': case 'g':
             return after;
         case 'E': case 'T':
-            separate(ps);
+            layer(ps);
             ps->style |= KS_ST_GLOSS;
             return after;
         case 'e': case 't':
             ps->style &= ~KS_ST_GLOSS;
             return after;
         case 'X':
-            separate(ps);
+            layer(ps);
             ps->style |= KS_ST_TRANSLIT;
             return after;
         case 'x':
@@ -521,7 +577,7 @@ static const char *tag(Parser *ps, const char *name, int n, const char *after)
     return after;
 }
 
-void ks_gbf_parse(const char *s, const KsStyleSheet *css, KsSpanCb cb, void *data)
+static void parse(const char *s, const KsStyleSheet *css, gboolean boxes, KsSpanCb cb, void *data)
 {
     Parser ps = { 0 };
     const char *text = s, *p = s;
@@ -532,6 +588,7 @@ void ks_gbf_parse(const char *s, const KsStyleSheet *css, KsSpanCb cb, void *dat
     ps.data = data;
     ps.css = css;
     ps.space = TRUE;
+    ps.boxes = boxes;
     while (*p) {
         const char *end;
 
@@ -582,6 +639,18 @@ void ks_gbf_parse(const char *s, const KsStyleSheet *css, KsSpanCb cb, void *dat
         text = p;
     }
     emit(&ps, KS_SPAN_TEXT, text, p - text);
+    if (boxes)
+        unwind(&ps, 0); /* every box closed */
+}
+
+void ks_gbf_parse(const char *s, const KsStyleSheet *css, KsSpanCb cb, void *data)
+{
+    parse(s, css, FALSE, cb, data);
+}
+
+void ks_gbf_parse_boxes(const char *s, const KsStyleSheet *css, KsSpanCb cb, void *data)
+{
+    parse(s, css, TRUE, cb, data);
 }
 
 static void plain_cb(const KsSpan *sp, void *data)

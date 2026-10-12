@@ -293,6 +293,8 @@ static void span_cb(const KsSpan *sp, void *data)
     }
     case KS_SPAN_MORPH:
     case KS_SPAN_UNKNOWN:
+    case KS_SPAN_BOX_OPEN:
+    case KS_SPAN_BOX_CLOSE:
         break;
     }
 }

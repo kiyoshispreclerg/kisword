@@ -31,7 +31,7 @@ LINGUAS := $(shell test -f po/LINGUAS && grep -v '^\#' po/LINGUAS)
 MOFILES := $(foreach lang,$(LINGUAS),po/$(lang).mo)
 
 SRCS := src/main.c src/window.c src/searchpane.c src/render.c src/module.c src/gbf.c src/style.c src/rules.c src/html.c \
-	src/search.c src/books.c src/ref.c src/config.c
+	src/search.c src/boxes.c src/books.c src/ref.c src/config.c
 OBJS := $(SRCS:.c=.o)
 HDRS := $(wildcard src/*.h)
 
@@ -60,16 +60,19 @@ update-po: po/kisword.pot
 
 # ---- tests -------------------------------------------------------------------
 
-TESTS := tests/test_gbf tests/test_rules tests/test_html tests/test_ref tests/test_module tests/test_search
+TESTS := tests/test_gbf tests/test_boxes tests/test_rules tests/test_html tests/test_ref tests/test_module tests/test_search
 
-GBF_SRCS := src/gbf.c src/style.c src/html.c
-GBF_HDRS := src/gbf.h src/html.h
+GBF_SRCS := src/gbf.c src/style.c src/html.c src/boxes.c
+GBF_HDRS := src/gbf.h src/html.h src/boxes.h
 
 tests/test_gbf: tests/test_gbf.c $(GBF_SRCS) $(GBF_HDRS)
 	$(CC) $(CFLAGS) $(TEST_CFLAGS) -Isrc -o $@ tests/test_gbf.c $(GBF_SRCS) $(TEST_LIBS)
 
 tests/test_rules: tests/test_rules.c src/rules.c src/rules.h $(GBF_SRCS) $(GBF_HDRS)
 	$(CC) $(CFLAGS) $(TEST_CFLAGS) -Isrc -o $@ tests/test_rules.c src/rules.c $(GBF_SRCS) $(TEST_LIBS)
+
+tests/test_boxes: tests/test_boxes.c $(GBF_SRCS) $(GBF_HDRS)
+	$(CC) $(CFLAGS) $(TEST_CFLAGS) -Isrc -o $@ tests/test_boxes.c $(GBF_SRCS) $(TEST_LIBS)
 
 tests/test_html: tests/test_html.c src/html.c src/html.h
 	$(CC) $(CFLAGS) $(TEST_CFLAGS) -Isrc -o $@ tests/test_html.c src/html.c $(TEST_LIBS)
