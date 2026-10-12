@@ -1,5 +1,7 @@
 # kisword
 
+[Português](README.pt-BR.md) · **English**
+
 A light desktop Bible reader for **MySword** modules (`*.bbl.mybible`), in C
 and GTK2.
 
@@ -54,6 +56,18 @@ running text: complete, but dense.
 ones with `encryption` set in their `Details` table) are protected by MySword
 itself; kisword lists them greyed out and explains why, and does not try to get
 around that protection.
+
+## Installing
+
+Every release has `.deb` packages on the
+[Releases](../../releases) page, for Ubuntu 22.04, 24.04 and 26.04, Debian 12
+and 13, and Devuan daedalus and excalibur (use the Debian 12 / 13 package
+respectively). Tags `v1.x.x` and later are stable releases; `v0.x.x` and
+tags with a suffix (`v1.2.0-beta`) are marked as pre-releases.
+
+```sh
+sudo apt install ./kisword_0.1.0-1_<distro>_amd64.deb
+```
 
 ## Building
 

@@ -1,0 +1,92 @@
+name: Release
+
+# Source zip + .deb for Ubuntu LTS (22.04, 24.04, 26.04) and Debian/Devuan
+# (Debian 12 = Devuan daedalus, Debian 13 = Devuan excalibur) on every v*
+# tag, or on demand from the Actions tab.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  source:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the tag against VERSION
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          v=$(cat VERSION)
+          t=${GITHUB_REF_NAME%%-*}   # v0.3.0-rc1 -> v0.3.0
+          [ "v$v" = "$t" ] || { echo "::error::tag $GITHUB_REF_NAME != VERSION $v"; exit 1; }
+      - name: Zip the sources
+        run: |
+          v=$(cat VERSION)
+          mkdir dist
+          git archive --format=zip --prefix="kisword-$v/" -o "dist/kisword-$v-src.zip" HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source
+          path: dist/*.zip
+
+  deb:
+    name: deb (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The .deb's Depends come from dpkg-shlibdeps, so they match the
+          # libraries of the image it was built in.
+          - name: ubuntu22.04
+            image: ubuntu:22.04
+          - name: ubuntu24.04
+            image: ubuntu:24.04
+          - name: ubuntu26.04
+            image: ubuntu:26.04
+          - name: debian12-devuan-daedalus
+            image: debian:bookworm   # Devuan daedalus is bookworm without systemd
+          - name: debian13-devuan-excalibur
+            image: debian:trixie     # Devuan excalibur is trixie without systemd
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            ca-certificates git build-essential dpkg-dev pkg-config gettext \
+            libgtk2.0-dev libsqlite3-dev
+      - uses: actions/checkout@v4
+      - name: Build the .deb
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          tools/build-deb.sh dist
+          cd dist
+          for f in *.deb; do mv "$f" "${f%_*.deb}_${{ matrix.name }}_${f##*_}"; done
+          dpkg-deb -I *.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ matrix.name }}
+          path: dist/*.deb
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [source, deb]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          # Every 0.x.x is a pre-release (stable starts at 1.0.0), and so is
+          # any suffixed tag such as v1.2.0-beta.
+          prerelease: ${{ startsWith(github.ref_name, 'v0.') || contains(github.ref_name, '-') }}
