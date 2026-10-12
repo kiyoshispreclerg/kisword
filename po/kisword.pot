@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kisword 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:00-0300\n"
+"POT-Creation-Date: 2026-10-12 15:13-0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -72,35 +72,35 @@ msgstr ""
 msgid "[MODULE.bbl.mybible…]"
 msgstr ""
 
-#: src/module.c:142
+#: src/module.c:146
 #, c-format
 msgid "%s is not a MySword Bible module (%s)"
 msgstr ""
 
-#: src/module.c:176
+#: src/module.c:181
 msgid ""
 "This is an encrypted MySword module. Encrypted modules are not supported."
 msgstr ""
 
-#: src/module.c:179
+#: src/module.c:184
 msgid "This module is compressed in a format kisword does not read yet."
 msgstr ""
 
-#: src/module.c:182
+#: src/module.c:187
 msgid ""
 "The verse text in this module is binary (probably encrypted or compressed)."
 msgstr ""
 
-#: src/module.c:322
+#: src/module.c:334
 #, c-format
 msgid "%s has no verses."
 msgstr ""
 
-#: src/render.c:330
+#: src/render.c:377
 msgid "This module does not have this chapter."
 msgstr ""
 
-#: src/render.c:517
+#: src/render.c:564
 msgid "Dictionaries are not supported yet."
 msgstr ""
 
@@ -168,7 +168,7 @@ msgstr ""
 msgid "Close this parallel Bible"
 msgstr ""
 
-#: src/window.c:419 src/window.c:556 src/window.c:745
+#: src/window.c:419 src/window.c:558 src/window.c:747
 msgid "Could not open the module"
 msgstr ""
 
@@ -181,241 +181,241 @@ msgstr ""
 msgid "Show these Bibles along with %s (up to %d):"
 msgstr ""
 
-#: src/window.c:501
+#: src/window.c:503
 msgid "Side by side, in _columns"
 msgstr ""
 
-#: src/window.c:503
+#: src/window.c:505
 msgid "_Interleaved, verse by verse"
 msgstr ""
 
-#: src/window.c:524
+#: src/window.c:526
 #, c-format
 msgid "At most %d parallel Bibles; the others were left out."
 msgstr ""
 
-#: src/window.c:619
+#: src/window.c:621
 #, c-format
 msgid "Reference not recognized: %s"
 msgstr ""
 
-#: src/window.c:624
+#: src/window.c:626
 #, c-format
 msgid "%s is not in this module."
 msgstr ""
 
-#: src/window.c:721
+#: src/window.c:723
 msgid "Open MySword Bible module"
 msgstr ""
 
-#: src/window.c:726
+#: src/window.c:728
 msgid "MySword Bibles (*.bbl.mybible)"
 msgstr ""
 
-#: src/window.c:758
+#: src/window.c:760
 msgid "Text font"
 msgstr ""
 
-#: src/window.c:811
+#: src/window.c:813
 msgid "A light Bible reader for MySword modules."
 msgstr ""
 
-#: src/window.c:864
+#: src/window.c:866
 msgid "Abbreviation"
 msgstr ""
 
-#: src/window.c:864
+#: src/window.c:866
 msgid "Description"
 msgstr ""
 
-#: src/window.c:865
+#: src/window.c:867
 msgid "Language"
 msgstr ""
 
-#: src/window.c:865
+#: src/window.c:867
 msgid "Version"
 msgstr ""
 
-#: src/window.c:866
+#: src/window.c:868
 msgid "Published"
 msgstr ""
 
-#: src/window.c:866
+#: src/window.c:868
 msgid "Version date"
 msgstr ""
 
-#: src/window.c:867
+#: src/window.c:869
 msgid "Author"
 msgstr ""
 
-#: src/window.c:867
+#: src/window.c:869
 msgid "Publisher"
 msgstr ""
 
-#: src/window.c:868
+#: src/window.c:870
 msgid "Creator"
 msgstr ""
 
-#: src/window.c:868
+#: src/window.c:870
 msgid "Source"
 msgstr ""
 
-#: src/window.c:885
+#: src/window.c:887
 msgid "About the module"
 msgstr ""
 
-#: src/window.c:928
+#: src/window.c:930
 #, c-format
 msgid "%d book"
 msgid_plural "%d books"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/window.c:930
+#: src/window.c:932
 msgid "Strong's numbers"
 msgstr ""
 
-#: src/window.c:932
+#: src/window.c:934
 msgid "right to left"
 msgstr ""
 
-#: src/window.c:934
+#: src/window.c:936
 msgid "verse rules"
 msgstr ""
 
-#: src/window.c:935
+#: src/window.c:937
 msgid "Contents"
 msgstr ""
 
-#: src/window.c:937
+#: src/window.c:939
 msgid "File"
 msgstr ""
 
-#: src/window.c:948
+#: src/window.c:950
 msgid "Editorial comments"
 msgstr ""
 
-#: src/window.c:1010
+#: src/window.c:1012
 msgid "_File"
 msgstr ""
 
-#: src/window.c:1011
+#: src/window.c:1013
 msgid "_Open module…"
 msgstr ""
 
-#: src/window.c:1013
+#: src/window.c:1015
 msgid "_Quit"
 msgstr ""
 
-#: src/window.c:1015
+#: src/window.c:1017
 msgid "_View"
 msgstr ""
 
-#: src/window.c:1016
+#: src/window.c:1018
 msgid "_Strong's numbers"
 msgstr ""
 
-#: src/window.c:1017
+#: src/window.c:1019
 msgid "_Footnotes"
 msgstr ""
 
-#: src/window.c:1018
+#: src/window.c:1020
 msgid "Words of Jesus in _red"
 msgstr ""
 
-#: src/window.c:1019
+#: src/window.c:1021
 msgid "_Paragraph layout"
 msgstr ""
 
-#: src/window.c:1021
+#: src/window.c:1023
 msgid "Pa_rallel Bibles…"
 msgstr ""
 
-#: src/window.c:1023
+#: src/window.c:1025
 msgid "Zoom _in"
 msgstr ""
 
-#: src/window.c:1026
+#: src/window.c:1028
 msgid "Zoom _out"
 msgstr ""
 
-#: src/window.c:1028
+#: src/window.c:1030
 msgid "_Normal size"
 msgstr ""
 
-#: src/window.c:1029
+#: src/window.c:1031
 msgid "_Font…"
 msgstr ""
 
-#: src/window.c:1031
+#: src/window.c:1033
 msgid "_Go"
 msgstr ""
 
-#: src/window.c:1032
+#: src/window.c:1034
 msgid "_Back"
 msgstr ""
 
-#: src/window.c:1033
+#: src/window.c:1035
 msgid "_Forward"
 msgstr ""
 
-#: src/window.c:1035
+#: src/window.c:1037
 msgid "_Previous chapter"
 msgstr ""
 
-#: src/window.c:1036
+#: src/window.c:1038
 msgid "_Next chapter"
 msgstr ""
 
-#: src/window.c:1038
+#: src/window.c:1040
 msgid "_Go to reference…"
 msgstr ""
 
-#: src/window.c:1039
+#: src/window.c:1041
 msgid "_Search…"
 msgstr ""
 
-#: src/window.c:1041
+#: src/window.c:1043
 msgid "_Help"
 msgstr ""
 
-#: src/window.c:1042
+#: src/window.c:1044
 msgid "About the _module…"
 msgstr ""
 
-#: src/window.c:1043
+#: src/window.c:1045
 msgid "_About"
 msgstr ""
 
-#: src/window.c:1085
+#: src/window.c:1087
 msgid "Bible module"
 msgstr ""
 
-#: src/window.c:1094
+#: src/window.c:1096
 msgid "Book"
 msgstr ""
 
-#: src/window.c:1099
+#: src/window.c:1101
 msgid "Chapter"
 msgstr ""
 
-#: src/window.c:1102
+#: src/window.c:1104
 msgid "Back (Alt+Left)"
 msgstr ""
 
-#: src/window.c:1103
+#: src/window.c:1105
 msgid "Forward (Alt+Right)"
 msgstr ""
 
-#: src/window.c:1107
+#: src/window.c:1109
 msgid "Go to a reference, e.g. \"Jo 3:16\", \"1Co 13\" or \"gn 1\" (Ctrl+L)"
 msgstr ""
 
-#: src/window.c:1116
+#: src/window.c:1118
 msgid "Go to:"
 msgstr ""
 
-#: src/window.c:1229
+#: src/window.c:1231
 #, c-format
 msgid ""
 "No MySword Bible module found.\n"
