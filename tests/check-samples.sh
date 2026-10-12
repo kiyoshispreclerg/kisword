@@ -31,6 +31,18 @@ expect kjv.bbl.mybible "Gn 1:1" "1 In the beginning God created the heaven and t
 expect RVP-2009.bbl.mybible "Sl 23:1" "1 O SENHOR é meu pastor; nada me faltará."
 expect RVP-2009.bbl.mybible "1Sm 17:58" "Belém. Vive a tua alma"
 
+expect_search() { # module query expected-substring [options]
+    [ -e "$dir/$1" ] || return 0
+    got=$(LANG=C ./kisword --search "$2" $4 "$dir/$1" 2>&1)
+    case "$got" in
+        *"$3"*) ;;
+        *) echo "FAIL --search $2 ($1): got: $(echo "$got" | tail -1)"; fail=1 ;;
+    esac
+}
+expect_search RVP-2009.bbl.mybible "AMOU O MUNDO" "Jo 3:16 Porque Deus amou o mundo" --phrase
+expect_search RVP-2009.bbl.mybible "principio criou" "Gn 1:1 No princípio"
+expect_search kjv.bbl.mybible "H430" "2249 verses"
+
 if [ -e "$dir/HiSB.bbl.mybible" ]; then
     ./kisword --check "$dir/HiSB.bbl.mybible" | grep -q UNSUPPORTED || { echo "FAIL HiSB not refused"; fail=1; }
 fi

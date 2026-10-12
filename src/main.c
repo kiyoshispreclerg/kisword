@@ -10,6 +10,7 @@
 #include "ks_i18n.h"
 #include "module.h"
 #include "ref.h"
+#include "search.h"
 #include "window.h"
 
 #include <gtk/gtk.h>
@@ -57,6 +58,59 @@ static int cli_dump(char **files, const char *text)
         g_free(ruled);
     }
     sqlite3_finalize(st);
+    ks_module_free(m);
+    return 0;
+}
+
+/* --search: hits as "Jo 3:16 text", then a count line on stderr. */
+static int cli_search(char **files, const char *query, gboolean phrase, gboolean whole)
+{
+    KsSearchOptions opt = { phrase ? KS_SEARCH_PHRASE : KS_SEARCH_ALL_WORDS, whole, 0, 0 };
+    KsModule *m;
+    GError *err = NULL;
+    GArray *hits;
+    gint64 t0, t1;
+    char testament;
+    int number;
+
+    if (!files || !files[0] || files[1]) {
+        fprintf(stderr, "kisword: %s\n", _("--search needs exactly one module file"));
+        return 2;
+    }
+    m = ks_module_probe(files[0], &err);
+    if (!m || !ks_module_open(m, &err)) {
+        fprintf(stderr, "kisword: %s\n", err->message);
+        g_error_free(err);
+        ks_module_free(m);
+        return 1;
+    }
+    t0 = g_get_monotonic_time();
+    if (ks_search_parse_strong(query, &testament, &number)) {
+        hits = ks_search_strong(m, testament, number, &opt);
+        t1 = t0;
+    } else {
+        KsSearchIndex *idx = ks_search_index_new(m);
+
+        while (!ks_search_index_step(idx, 1000))
+            ;
+        t1 = g_get_monotonic_time();
+        hits = ks_search_text(idx, query, &opt);
+        ks_search_index_free(idx);
+    }
+    for (guint i = 0; i < hits->len; i++) {
+        const KsHit *h = &g_array_index(hits, KsHit, i);
+        char *ref = ks_ref_format(h->book, h->chapter, h->verse, 0);
+        char *raw = ks_module_verse(m, h->book, h->chapter, h->verse);
+        char *plain = ks_gbf_plain(raw, m->css);
+
+        printf("%s %s\n", ref, plain);
+        g_free(plain);
+        g_free(raw);
+        g_free(ref);
+    }
+    fprintf(stderr, "%u verses (index %.0f ms, search %.0f ms)\n", hits->len, (t1 - t0) / 1000.0,
+            (g_get_monotonic_time() - t1) / 1000.0);
+    g_array_free(hits, TRUE);
     ks_module_free(m);
     return 0;
 }
@@ -162,15 +216,20 @@ static int cli_check(char **files)
 
 int main(int argc, char **argv)
 {
-    char *ref = NULL, *dump = NULL;
+    char *ref = NULL, *dump = NULL, *search = NULL;
     char **files = NULL;
-    gboolean check = FALSE, version = FALSE;
+    gboolean check = FALSE, version = FALSE, phrase = FALSE, whole = FALSE;
     GOptionEntry entries[] = {
         { "ref", 'r', 0, G_OPTION_ARG_STRING, &ref, N_("Open at this reference (e.g. \"Jo 3:16\")"), N_("REF") },
         { "dump", 0, 0, G_OPTION_ARG_STRING, &dump, N_("Print REF from the given module as plain text and exit"),
           N_("REF") },
         { "check", 0, 0, G_OPTION_ARG_NONE, &check, N_("Parse every verse of the given modules and report problems"),
           NULL },
+        { "search", 0, 0, G_OPTION_ARG_STRING, &search,
+          N_("Print the verses of the given module with all these words (or a Strong's number like H430) and exit"),
+          N_("WORDS") },
+        { "phrase", 0, 0, G_OPTION_ARG_NONE, &phrase, N_("With --search: the words together, in order"), NULL },
+        { "whole-words", 0, 0, G_OPTION_ARG_NONE, &whole, N_("With --search: match whole words only"), NULL },
         { "version", 0, 0, G_OPTION_ARG_NONE, &version, N_("Show the version and exit"), NULL },
         { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &files, NULL, N_("[MODULE.bbl.mybible…]") },
         { NULL, 0, 0, 0, NULL, NULL, NULL },
@@ -204,6 +263,8 @@ int main(int argc, char **argv)
         status = cli_dump(files, dump);
     } else if (check) {
         status = cli_check(files);
+    } else if (search) {
+        status = cli_search(files, search, phrase, whole);
     } else {
         gtk_init(&argc, &argv);
         ks_window_run(cfg, files, ref);

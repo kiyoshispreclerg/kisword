@@ -9,6 +9,7 @@
 #include "module.h"
 #include "ref.h"
 #include "render.h"
+#include "searchpane.h"
 
 #include <gdk/gdkkeysyms.h>
 #include <glib-unix.h>
@@ -32,10 +33,11 @@ typedef struct {
     GPtrArray *mods;
     KsModule *mod;
     KsView *view;
+    KsSearchPane *search;
     PangoFontDescription *font;
 
     GtkWidget *win, *mod_combo, *book_combo, *chap_spin, *entry, *status;
-    GtkWidget *back_btn, *fwd_btn, *back_item, *fwd_item, *info_item;
+    GtkWidget *back_btn, *fwd_btn, *back_item, *fwd_item, *info_item, *search_item;
     GtkListStore *mod_store, *book_store;
     GtkCheckMenuItem *chk_strong, *chk_notes, *chk_red, *chk_para;
     guint status_ctx;
@@ -43,6 +45,7 @@ typedef struct {
     GArray *back, *fwd; /* KsPos */
     int book, chapter;
     gboolean busy;      /* widgets being updated from code: ignore their signals */
+    gboolean at_result; /* showing a search result: the next one replaces it in history */
 } KsWin;
 
 /* ---- small helpers -------------------------------------------------------- */
@@ -164,6 +167,7 @@ static void sync_widgets(KsWin *w)
     gtk_widget_set_sensitive(w->fwd_btn, w->fwd->len > 0);
     gtk_widget_set_sensitive(w->fwd_item, w->fwd->len > 0);
     gtk_widget_set_sensitive(w->info_item, w->mod != NULL);
+    gtk_widget_set_sensitive(w->search_item, w->mod != NULL);
 
     if (w->mod) {
         ref = g_strdup_printf("%s %d", ks_book_name(w->book), w->chapter);
@@ -213,9 +217,11 @@ static void navigate(KsWin *w, int book, int chapter, int scroll_verse, int hl_f
         hist_push(w->back, current_pos(w));
         g_array_set_size(w->fwd, 0);
     }
+    w->at_result = FALSE;
     w->book = book;
     w->chapter = chapter;
     ks_view_show(w->view, m, book, chapter, scroll_verse, hl_from, hl_to);
+    ks_search_pane_set_book(w->search, book);
     sync_widgets(w);
 }
 
@@ -275,6 +281,7 @@ static gboolean switch_module(KsWin *w, KsModule *m, gboolean show)
     if (old)
         ks_module_close(old);
     fill_books(w);
+    ks_search_pane_set_module(w->search, m);
     gtk_widget_set_sensitive(w->book_combo, TRUE);
     gtk_widget_set_sensitive(w->chap_spin, TRUE);
     if (show)
@@ -471,6 +478,27 @@ static void cmd_font(KsWin *w)
     }
     g_free(cur);
     gtk_widget_destroy(d);
+}
+
+/* A result picked in the search panel. Going through the results one by
+ * one leaves a single entry in the history, the place the search began. */
+static void search_go(int book, int chapter, int verse, void *data)
+{
+    KsWin *w = data;
+
+    navigate(w, book, chapter, 0, verse, 0, !w->at_result);
+    w->at_result = TRUE;
+}
+
+static void cmd_search(KsWin *w)
+{
+    if (w->mod)
+        ks_search_pane_focus(w->search);
+}
+
+static void on_search_hidden(KsWin *w)
+{
+    gtk_widget_grab_focus(ks_view_text(w->view));
 }
 
 static void cmd_back(KsWin *w) { hist_go(w, w->back, w->fwd); }
@@ -716,6 +744,7 @@ static GtkWidget *build_menus(KsWin *w, GtkAccelGroup *ag)
     menu_item(m, ag, _("_Next chapter"), GDK_KEY_Page_Down, GDK_CONTROL_MASK, cmd_next_chapter, w);
     separator(m);
     menu_item(m, ag, _("_Go to reference…"), GDK_KEY_l, GDK_CONTROL_MASK, cmd_goto, w);
+    w->search_item = menu_item(m, ag, _("_Search…"), GDK_KEY_f, GDK_CONTROL_MASK, cmd_search, w);
 
     m = submenu(bar, _("_Help"));
     w->info_item = menu_item(m, ag, _("About the _module…"), 0, 0, cmd_module_info, w);
@@ -812,7 +841,7 @@ void ks_window_run(KsConfig *cfg, char **files, const char *ref)
 {
     KsWin *w = g_new0(KsWin, 1);
     GtkAccelGroup *ag = gtk_accel_group_new();
-    GtkWidget *vbox;
+    GtkWidget *vbox, *paned;
     KsViewOptions opt = { cfg->show_strong, cfg->show_notes, cfg->red_letters, cfg->paragraphs };
     char *default_dir = ks_config_modules_dir();
     GPtrArray *dirs = g_ptr_array_new(), *extra = g_ptr_array_new();
@@ -849,11 +878,18 @@ void ks_window_run(KsConfig *cfg, char **files, const char *ref)
     w->view = ks_view_new(&opt);
     w->font = pango_font_description_from_string(cfg->font ? cfg->font : KS_DEFAULT_FONT);
     ks_view_set_font(w->view, w->font);
+    w->search = ks_search_pane_new(search_go, w);
+    g_signal_connect_swapped(ks_search_pane_widget(w->search), "hide", G_CALLBACK(on_search_hidden), w);
+
+    paned = gtk_hpaned_new();
+    gtk_paned_pack1(GTK_PANED(paned), ks_view_widget(w->view), TRUE, FALSE);
+    gtk_paned_pack2(GTK_PANED(paned), ks_search_pane_widget(w->search), FALSE, FALSE);
+    gtk_paned_set_position(GTK_PANED(paned), MAX(cfg->width - 330, 300));
 
     vbox = gtk_vbox_new(FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), build_menus(w, ag), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), build_toolbar(w), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(vbox), ks_view_widget(w->view), TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), paned, TRUE, TRUE, 0);
     w->status = gtk_statusbar_new();
     w->status_ctx = gtk_statusbar_get_context_id(GTK_STATUSBAR(w->status), "main");
     gtk_box_pack_start(GTK_BOX(vbox), w->status, FALSE, FALSE, 0);

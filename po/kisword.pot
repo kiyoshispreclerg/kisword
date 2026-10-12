@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kisword 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 14:45-0300\n"
+"POT-Creation-Date: 2026-10-12 14:52-0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,35 +18,57 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: src/main.c:27
+#: src/main.c:28
 msgid "--dump needs exactly one module file"
 msgstr ""
 
-#: src/main.c:31
+#: src/main.c:32
 msgid "Reference not recognized"
 msgstr ""
 
-#: src/main.c:169
+#: src/main.c:77
+msgid "--search needs exactly one module file"
+msgstr ""
+
+#: src/main.c:223
 msgid "Open at this reference (e.g. \"Jo 3:16\")"
 msgstr ""
 
-#: src/main.c:169 src/main.c:171
+#: src/main.c:223 src/main.c:225
 msgid "REF"
 msgstr ""
 
-#: src/main.c:170
+#: src/main.c:224
 msgid "Print REF from the given module as plain text and exit"
 msgstr ""
 
-#: src/main.c:172
+#: src/main.c:226
 msgid "Parse every verse of the given modules and report problems"
 msgstr ""
 
-#: src/main.c:174
+#: src/main.c:229
+msgid ""
+"Print the verses of the given module with all these words (or a Strong's "
+"number like H430) and exit"
+msgstr ""
+
+#: src/main.c:230
+msgid "WORDS"
+msgstr ""
+
+#: src/main.c:231
+msgid "With --search: the words together, in order"
+msgstr ""
+
+#: src/main.c:232
+msgid "With --search: match whole words only"
+msgstr ""
+
+#: src/main.c:233
 msgid "Show the version and exit"
 msgstr ""
 
-#: src/main.c:175
+#: src/main.c:234
 msgid "[MODULE.bbl.mybible…]"
 msgstr ""
 
@@ -78,224 +100,288 @@ msgstr ""
 msgid "Dictionaries are not supported yet."
 msgstr ""
 
-#: src/window.c:269 src/window.c:448
+#: src/searchpane.c:88
+#, c-format
+msgid "%u verses (showing the first %u)"
+msgstr ""
+
+#: src/searchpane.c:90
+#, c-format
+msgid "%u verse"
+msgid_plural "%u verses"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/searchpane.c:143
+msgid "Preparing the search…"
+msgstr ""
+
+#: src/searchpane.c:256
+msgid "All words"
+msgstr ""
+
+#: src/searchpane.c:256
+msgid "Any word"
+msgstr ""
+
+#: src/searchpane.c:256
+msgid "Exact phrase"
+msgstr ""
+
+#: src/searchpane.c:257
+msgid "New Testament"
+msgstr ""
+
+#: src/searchpane.c:257
+msgid "Old Testament"
+msgstr ""
+
+#: src/searchpane.c:257
+msgid "Whole Bible"
+msgstr ""
+
+#: src/searchpane.c:258
+msgid "Current book"
+msgstr ""
+
+#: src/searchpane.c:273
+msgid "Words to search for, or a Strong's number such as H430 or G26"
+msgstr ""
+
+#: src/searchpane.c:278
+msgid "Search"
+msgstr ""
+
+#: src/searchpane.c:284
+msgid "Close the search (Esc)"
+msgstr ""
+
+#: src/searchpane.c:293
+msgid "_Whole words"
+msgstr ""
+
+#: src/window.c:275 src/window.c:455
 msgid "Could not open the module"
 msgstr ""
 
-#: src/window.c:328
+#: src/window.c:335
 #, c-format
 msgid "Reference not recognized: %s"
 msgstr ""
 
-#: src/window.c:333
+#: src/window.c:340
 #, c-format
 msgid "%s is not in this module."
 msgstr ""
 
-#: src/window.c:424
+#: src/window.c:431
 msgid "Open MySword Bible module"
 msgstr ""
 
-#: src/window.c:429
+#: src/window.c:436
 msgid "MySword Bibles (*.bbl.mybible)"
 msgstr ""
 
-#: src/window.c:461
+#: src/window.c:468
 msgid "Text font"
 msgstr ""
 
-#: src/window.c:493
+#: src/window.c:521
 msgid "A light Bible reader for MySword modules."
 msgstr ""
 
-#: src/window.c:546
+#: src/window.c:574
 msgid "Abbreviation"
 msgstr ""
 
-#: src/window.c:546
+#: src/window.c:574
 msgid "Description"
 msgstr ""
 
-#: src/window.c:547
+#: src/window.c:575
 msgid "Language"
 msgstr ""
 
-#: src/window.c:547
+#: src/window.c:575
 msgid "Version"
 msgstr ""
 
-#: src/window.c:548
+#: src/window.c:576
 msgid "Published"
 msgstr ""
 
-#: src/window.c:548
+#: src/window.c:576
 msgid "Version date"
 msgstr ""
 
-#: src/window.c:549
+#: src/window.c:577
 msgid "Author"
 msgstr ""
 
-#: src/window.c:549
+#: src/window.c:577
 msgid "Publisher"
 msgstr ""
 
-#: src/window.c:550
+#: src/window.c:578
 msgid "Creator"
 msgstr ""
 
-#: src/window.c:550
+#: src/window.c:578
 msgid "Source"
 msgstr ""
 
-#: src/window.c:567
+#: src/window.c:595
 msgid "About the module"
 msgstr ""
 
-#: src/window.c:610
+#: src/window.c:638
 #, c-format
 msgid "%d book"
 msgid_plural "%d books"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/window.c:612
+#: src/window.c:640
 msgid "Strong's numbers"
 msgstr ""
 
-#: src/window.c:614
+#: src/window.c:642
 msgid "right to left"
 msgstr ""
 
-#: src/window.c:616
+#: src/window.c:644
 msgid "verse rules"
 msgstr ""
 
-#: src/window.c:617
+#: src/window.c:645
 msgid "Contents"
 msgstr ""
 
-#: src/window.c:619
+#: src/window.c:647
 msgid "File"
 msgstr ""
 
-#: src/window.c:630
+#: src/window.c:658
 msgid "Editorial comments"
 msgstr ""
 
-#: src/window.c:692
+#: src/window.c:720
 msgid "_File"
 msgstr ""
 
-#: src/window.c:693
+#: src/window.c:721
 msgid "_Open module…"
 msgstr ""
 
-#: src/window.c:695
+#: src/window.c:723
 msgid "_Quit"
 msgstr ""
 
-#: src/window.c:697
+#: src/window.c:725
 msgid "_View"
 msgstr ""
 
-#: src/window.c:698
+#: src/window.c:726
 msgid "_Strong's numbers"
 msgstr ""
 
-#: src/window.c:699
+#: src/window.c:727
 msgid "_Footnotes"
 msgstr ""
 
-#: src/window.c:700
+#: src/window.c:728
 msgid "Words of Jesus in _red"
 msgstr ""
 
-#: src/window.c:701
+#: src/window.c:729
 msgid "_Paragraph layout"
 msgstr ""
 
-#: src/window.c:703
+#: src/window.c:731
 msgid "Zoom _in"
 msgstr ""
 
-#: src/window.c:706
+#: src/window.c:734
 msgid "Zoom _out"
 msgstr ""
 
-#: src/window.c:708
+#: src/window.c:736
 msgid "_Normal size"
 msgstr ""
 
-#: src/window.c:709
+#: src/window.c:737
 msgid "_Font…"
 msgstr ""
 
-#: src/window.c:711
+#: src/window.c:739
 msgid "_Go"
 msgstr ""
 
-#: src/window.c:712
+#: src/window.c:740
 msgid "_Back"
 msgstr ""
 
-#: src/window.c:713
+#: src/window.c:741
 msgid "_Forward"
 msgstr ""
 
-#: src/window.c:715
+#: src/window.c:743
 msgid "_Previous chapter"
 msgstr ""
 
-#: src/window.c:716
+#: src/window.c:744
 msgid "_Next chapter"
 msgstr ""
 
-#: src/window.c:718
+#: src/window.c:746
 msgid "_Go to reference…"
 msgstr ""
 
-#: src/window.c:720
+#: src/window.c:747
+msgid "_Search…"
+msgstr ""
+
+#: src/window.c:749
 msgid "_Help"
 msgstr ""
 
-#: src/window.c:721
+#: src/window.c:750
 msgid "About the _module…"
 msgstr ""
 
-#: src/window.c:722
+#: src/window.c:751
 msgid "_About"
 msgstr ""
 
-#: src/window.c:751
+#: src/window.c:780
 msgid "Bible module"
 msgstr ""
 
-#: src/window.c:760
+#: src/window.c:789
 msgid "Book"
 msgstr ""
 
-#: src/window.c:765
+#: src/window.c:794
 msgid "Chapter"
 msgstr ""
 
-#: src/window.c:768
+#: src/window.c:797
 msgid "Back (Alt+Left)"
 msgstr ""
 
-#: src/window.c:769
+#: src/window.c:798
 msgid "Forward (Alt+Right)"
 msgstr ""
 
-#: src/window.c:773
+#: src/window.c:802
 msgid "Go to a reference, e.g. \"Jo 3:16\", \"1Co 13\" or \"gn 1\" (Ctrl+L)"
 msgstr ""
 
-#: src/window.c:782
+#: src/window.c:811
 msgid "Go to:"
 msgstr ""
 
-#: src/window.c:869
+#: src/window.c:905
 #, c-format
 msgid ""
 "No MySword Bible module found.\n"

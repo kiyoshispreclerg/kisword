@@ -655,7 +655,10 @@ KsView *ks_view_new(const KsViewOptions *opt)
     gtk_text_view_set_pixels_below_lines(GTK_TEXT_VIEW(v->text), 4);
 
     v->scroll = gtk_scrolled_window_new(NULL, NULL);
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(v->scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    /* Not NEVER: a wrapping GtkTextView asks for the width it last had, and
+     * NEVER would pass that on, growing the window when a side panel opens.
+     * Wrapping keeps the horizontal bar from ever showing. */
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(v->scroll), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
     gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(v->scroll), GTK_SHADOW_IN);
     gtk_container_add(GTK_CONTAINER(v->scroll), v->text);
 

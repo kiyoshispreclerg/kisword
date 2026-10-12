@@ -30,8 +30,8 @@ LIBINTL := $(shell echo 'int main(void){return 0;}' | $(CC) -x c - -o /dev/null 
 LINGUAS := $(shell test -f po/LINGUAS && grep -v '^\#' po/LINGUAS)
 MOFILES := $(foreach lang,$(LINGUAS),po/$(lang).mo)
 
-SRCS := src/main.c src/window.c src/render.c src/module.c src/gbf.c src/style.c src/rules.c src/html.c \
-	src/books.c src/ref.c src/config.c
+SRCS := src/main.c src/window.c src/searchpane.c src/render.c src/module.c src/gbf.c src/style.c src/rules.c src/html.c \
+	src/search.c src/books.c src/ref.c src/config.c
 OBJS := $(SRCS:.c=.o)
 HDRS := $(wildcard src/*.h)
 
@@ -60,7 +60,7 @@ update-po: po/kisword.pot
 
 # ---- tests -------------------------------------------------------------------
 
-TESTS := tests/test_gbf tests/test_rules tests/test_html tests/test_ref tests/test_module
+TESTS := tests/test_gbf tests/test_rules tests/test_html tests/test_ref tests/test_module tests/test_search
 
 GBF_SRCS := src/gbf.c src/style.c src/html.c
 GBF_HDRS := src/gbf.h src/html.h
@@ -81,6 +81,9 @@ MODULE_SRCS := src/module.c src/rules.c $(GBF_SRCS)
 
 tests/test_module: tests/test_module.c $(MODULE_SRCS) src/module.h src/rules.h $(GBF_HDRS)
 	$(CC) $(CFLAGS) $(TEST_CFLAGS) $(DEFS) -Isrc -o $@ tests/test_module.c $(MODULE_SRCS) $(TEST_LIBS) $(LIBINTL)
+
+tests/test_search: tests/test_search.c src/search.c src/search.h $(MODULE_SRCS) src/module.h $(GBF_HDRS)
+	$(CC) $(CFLAGS) $(TEST_CFLAGS) $(DEFS) -Isrc -o $@ tests/test_search.c src/search.c $(MODULE_SRCS) $(TEST_LIBS) $(LIBINTL)
 
 # Unit tests always; the real modules in interno/ (kept out of the
 # repository) too, when present.

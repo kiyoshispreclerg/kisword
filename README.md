@@ -24,6 +24,11 @@ but a separate program; it may end up in a future `kidesktop-extras`.
 - Verse-per-line or paragraph layout.
 - "Go to" with free-form references in Portuguese or English: `Jo 3:16`,
   `1Co 13:4-7`, `gn 1`, `João 3`, `John 3:16`, or just `5` for chapter 5.
+- Search (Ctrl+F) in a side panel: all words, exact phrase or any word,
+  ignoring case and accents (and Hebrew points), whole words optional,
+  limited to the Old/New Testament or the current book. A Strong's number
+  (`H430`, `G26`) finds the verses tagged with it. The index is built the
+  first time you search a module, in the background.
 - Copy (Ctrl+C) gives whole verses as plain text with the reference:
   `Jo 3:16-17 (KJV)` followed by the verses.
 - Back/forward history, zoom, font choice, last position remembered.
@@ -32,7 +37,7 @@ but a separate program; it may end up in a future `kidesktop-extras`.
 - Right-to-left modules are laid out right-to-left.
 - Interface in English and Brazilian Portuguese; book names follow the locale.
 
-Not yet: search, parallel Bibles, dictionaries/commentaries (see
+Not yet: parallel Bibles, dictionaries/commentaries (see
 [KISWORD_PLAN.md](KISWORD_PLAN.md)).
 
 **Encrypted modules are not supported.** Some MySword modules (for example the
@@ -59,6 +64,8 @@ kisword                         # modules from ~/.local/share/kisword/modules
 kisword path/to/kjv.bbl.mybible --ref "Jo 3:16"
 kisword --dump "Sl 23" rvp.bbl.mybible   # plain text to stdout, no display needed
 kisword --check *.bbl.mybible            # parse every verse, report problems
+kisword --search "amor próximo" arc.bbl.mybible   # verses with all the words
+kisword --search H430 --phrase ...       # --phrase, --whole-words as in the panel
 ```
 
 Put modules in `~/.local/share/kisword/modules/`, list more directories in
@@ -67,6 +74,7 @@ Put modules in `~/.local/share/kisword/modules/`, list more directories in
 | Shortcut | Action |
 |---|---|
 | Ctrl+L | Go to reference |
+| Ctrl+F | Search (Esc closes the panel) |
 | Ctrl+PgUp / Ctrl+PgDn | Previous / next chapter |
 | Alt+← / Alt+→ | Back / forward |
 | Ctrl++ / Ctrl+- / Ctrl+0 | Zoom |

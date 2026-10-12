@@ -368,6 +368,22 @@ janela. Gravado ao fechar e ao trocar módulo; nunca a cada clique.
 - **Busca**: texto plano por verso montado sob demanda (~5 MB por Bíblia), sem
   maiúsculas/acentos, frase exata ou todas as palavras, filtro por intervalo de livros;
   busca por Strong (`H430`) no texto bruto. Resultados num `GtkTreeView`; clique navega.
+  **Feito** (`search.c`, `searchpane.c`, Ctrl+F, `--search`):
+  - O texto indexado é o que aparece na tela (regras aplicadas, sem títulos, notas nem
+    Strong), "dobrado": minúsculas, sem marcas combinantes (acentos, pontos do hebraico,
+    marcas de direção), pontuação → um espaço, com espaço nas pontas. Assim "palavras
+    inteiras" é só procurar `" amor "`, e frase ignora pontuação. Um bloco de memória
+    reduzido ao tamanho exato no fim (~4 MB na ARC).
+  - Índice montado em fatias de 300 versos num idle, com barra de progresso: ~150 ms na
+    ARC/KJV, ~10 s no BHSE (regras pesadas) sem travar a janela. Descartado ao trocar de
+    módulo. Busca no índice: ~10 ms.
+  - Strong: consulta `H430`/`g02316` vai direto ao banco (`LIKE '%430%'` filtra, o parser
+    confirma), pegando `<WH430>`, `<WH0430>` e os links que as `VerseRules` criam.
+  - Modos: todas as palavras, frase exata, qualquer palavra; intervalo: tudo, AT, NT,
+    livro atual (o livro do momento da busca).
+  - A lista guarda só a posição; o texto de cada linha é lido do banco quando a linha é
+    desenhada. Até 10 000 linhas.
+  - Percorrer resultados deixa uma só entrada no histórico (o lugar onde a busca começou).
 - **Bíblias paralelas**: modo intercalado (um `GtkTextView`, verso a verso de cada
   módulo — alinhamento perfeito, simples) e modo colunas (`GtkHPaned` com rolagem
   sincronizada pelo verso no topo, usando as marcas `vN`).

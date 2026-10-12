@@ -375,24 +375,106 @@ int ks_module_chapter(KsModule *m, int book, int chapter, KsVerseCb cb, void *da
     return n;
 }
 
-int ks_module_foreach(KsModule *m, KsAllCb cb, void *data)
+char *ks_module_verse(KsModule *m, int book, int chapter, int verse)
 {
     sqlite3_stmt *st;
-    int n = 0;
+    char *out = NULL;
 
-    if (!m->db || sqlite3_prepare_v2(m->db, "SELECT Book, Chapter, Verse, Scripture FROM Bible "
-                                            "ORDER BY Book, Chapter, Verse", -1, &st, NULL) != SQLITE_OK)
-        return -1;
-    while (sqlite3_step(st) == SQLITE_ROW) {
+    if (!m->db || sqlite3_prepare_v2(m->db, "SELECT Scripture FROM Bible WHERE Book = ?1 AND Chapter = ?2 "
+                                            "AND Verse = ?3", -1, &st, NULL) != SQLITE_OK)
+        return NULL;
+    sqlite3_bind_int(st, 1, book);
+    sqlite3_bind_int(st, 2, chapter);
+    sqlite3_bind_int(st, 3, verse);
+    if (sqlite3_step(st) == SQLITE_ROW) {
         char *fixed;
         gboolean valid;
-        const char *text = row_text(m, st, 3, &fixed, &valid);
+        const char *text = row_text(m, st, 0, &fixed, &valid);
 
-        cb(sqlite3_column_int(st, 0), sqlite3_column_int(st, 1), sqlite3_column_int(st, 2), text, valid, data);
-        g_free(fixed);
-        n++;
+        out = fixed ? fixed : g_strdup(text);
     }
     sqlite3_finalize(st);
+    return out;
+}
+
+struct KsVerseIter {
+    KsModule *m;
+    sqlite3_stmt *st;
+    char *fixed;
+};
+
+KsVerseIter *ks_module_iter_new(KsModule *m, const char *like)
+{
+    KsVerseIter *it;
+    sqlite3_stmt *st;
+
+    if (!m->db || sqlite3_prepare_v2(m->db, like ? "SELECT Book, Chapter, Verse, Scripture FROM Bible "
+                                                   "WHERE Scripture LIKE ?1 ORDER BY Book, Chapter, Verse"
+                                                 : "SELECT Book, Chapter, Verse, Scripture FROM Bible "
+                                                   "ORDER BY Book, Chapter, Verse",
+                                     -1, &st, NULL) != SQLITE_OK)
+        return NULL;
+    if (like)
+        sqlite3_bind_text(st, 1, like, -1, SQLITE_TRANSIENT);
+    it = g_new0(KsVerseIter, 1);
+    it->m = m;
+    it->st = st;
+    return it;
+}
+
+gboolean ks_module_iter_next(KsVerseIter *it, int *book, int *chapter, int *verse, const char **text,
+                             gboolean *was_valid)
+{
+    gboolean valid;
+
+    g_clear_pointer(&it->fixed, g_free);
+    if (sqlite3_step(it->st) != SQLITE_ROW)
+        return FALSE;
+    *book = sqlite3_column_int(it->st, 0);
+    *chapter = sqlite3_column_int(it->st, 1);
+    *verse = sqlite3_column_int(it->st, 2);
+    *text = row_text(it->m, it->st, 3, &it->fixed, &valid);
+    if (was_valid)
+        *was_valid = valid;
+    return TRUE;
+}
+
+void ks_module_iter_free(KsVerseIter *it)
+{
+    if (!it)
+        return;
+    sqlite3_finalize(it->st);
+    g_free(it->fixed);
+    g_free(it);
+}
+
+int ks_module_verse_count(KsModule *m)
+{
+    sqlite3_stmt *st;
+    int n = -1;
+
+    if (!m->db || sqlite3_prepare_v2(m->db, "SELECT COUNT(*) FROM Bible", -1, &st, NULL) != SQLITE_OK)
+        return -1;
+    if (sqlite3_step(st) == SQLITE_ROW)
+        n = sqlite3_column_int(st, 0);
+    sqlite3_finalize(st);
+    return n;
+}
+
+int ks_module_foreach(KsModule *m, KsAllCb cb, void *data)
+{
+    KsVerseIter *it = ks_module_iter_new(m, NULL);
+    int n = 0, book, chapter, verse;
+    const char *text;
+    gboolean valid;
+
+    if (!it)
+        return -1;
+    while (ks_module_iter_next(it, &book, &chapter, &verse, &text, &valid)) {
+        cb(book, chapter, verse, text, valid, data);
+        n++;
+    }
+    ks_module_iter_free(it);
     return n;
 }
 

@@ -65,6 +65,24 @@ void ks_module_close(KsModule *m);
 typedef void (*KsVerseCb)(int verse, const char *text, void *data);
 int ks_module_chapter(KsModule *m, int book, int chapter, KsVerseCb cb, void *data);
 
+/* One verse (VerseRules applied), NULL if absent. */
+char *ks_module_verse(KsModule *m, int book, int chapter, int verse);
+
+/* Walks verses in Bible order, a step at a time (search indexing runs from
+ * an idle handler). like: SQL LIKE pattern on the stored text to only get
+ * the verses that may match, or NULL for all. The module must stay open
+ * while the iterator lives. */
+typedef struct KsVerseIter KsVerseIter;
+KsVerseIter *ks_module_iter_new(KsModule *m, const char *like);
+/* FALSE at the end. text (rules applied) is valid until the next call;
+ * was_valid (may be NULL): the stored text was valid UTF-8. */
+gboolean ks_module_iter_next(KsVerseIter *it, int *book, int *chapter, int *verse, const char **text,
+                             gboolean *was_valid);
+void ks_module_iter_free(KsVerseIter *it);
+
+/* Number of verses in the module (for progress), -1 if not open. */
+int ks_module_verse_count(KsModule *m);
+
 /* Every verse, for --check. was_valid: the stored text was valid UTF-8. */
 typedef void (*KsAllCb)(int book, int chapter, int verse, const char *text, gboolean was_valid,
                         void *data);
