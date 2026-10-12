@@ -4,7 +4,8 @@
  * One rule per line: pattern<TAB>replacement[<TAB>replacement when the
  * rule is switched off<TAB>name]. The syntax is .NET/Java's ($1 in the
  * replacement), which PCRE (GRegex) reads; rules that don't compile are
- * skipped. Switchable rules are applied in their default (on) form. */
+ * skipped. Rules with a name are options MySword lets the reader switch
+ * ("Show Hebrew vowels"); several rules may share one name. All start on. */
 #ifndef KS_RULES_H
 #define KS_RULES_H
 
@@ -17,6 +18,12 @@ typedef struct KsRules KsRules;
 KsRules *ks_rules_new(const char *src, int *n_invalid);
 void ks_rules_free(KsRules *r);
 int ks_rules_count(const KsRules *r);
+
+/* The named options, and switching them. */
+int ks_rules_n_options(const KsRules *r);
+const char *ks_rules_option_name(const KsRules *r, int i);
+gboolean ks_rules_option_on(const KsRules *r, int i);
+void ks_rules_set_option(KsRules *r, int i, gboolean on);
 
 /* The verse after every rule, in order; NULL if no rule changed it. */
 char *ks_rules_apply(const KsRules *r, const char *text);

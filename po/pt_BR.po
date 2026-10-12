@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kisword 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:13-0300\n"
+"POT-Creation-Date: 2026-10-12 15:41-0300\n"
 "PO-Revision-Date: 2026-10-09 09:30-0300\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -169,259 +169,267 @@ msgstr "Fechar a busca (Esc)"
 msgid "_Whole words"
 msgstr "_Palavras inteiras"
 
-#: src/window.c:340
+#: src/window.c:327
+msgid "This module has no options."
+msgstr "Este módulo não tem opções."
+
+#: src/window.c:387
 msgid "Close this parallel Bible"
 msgstr "Fechar esta Bíblia paralela"
 
-#: src/window.c:419 src/window.c:558 src/window.c:747
+#: src/window.c:466 src/window.c:606 src/window.c:797
 msgid "Could not open the module"
 msgstr "Não foi possível abrir o módulo"
 
-#: src/window.c:452
+#: src/window.c:500
 msgid "Parallel Bibles"
 msgstr "Bíblias paralelas"
 
-#: src/window.c:462
+#: src/window.c:510
 #, c-format
 msgid "Show these Bibles along with %s (up to %d):"
 msgstr "Mostrar estas Bíblias junto com a %s (até %d):"
 
-#: src/window.c:503
+#: src/window.c:551
 msgid "Side by side, in _columns"
 msgstr "Lado a lado, em _colunas"
 
-#: src/window.c:505
+#: src/window.c:553
 msgid "_Interleaved, verse by verse"
 msgstr "_Intercaladas, versículo a versículo"
 
-#: src/window.c:526
+#: src/window.c:574
 #, c-format
 msgid "At most %d parallel Bibles; the others were left out."
 msgstr "No máximo %d Bíblias paralelas; as demais ficaram de fora."
 
-#: src/window.c:621
+#: src/window.c:671
 #, c-format
 msgid "Reference not recognized: %s"
 msgstr "Referência não reconhecida: %s"
 
-#: src/window.c:626
+#: src/window.c:676
 #, c-format
 msgid "%s is not in this module."
 msgstr "%s não está neste módulo."
 
-#: src/window.c:723
+#: src/window.c:773
 msgid "Open MySword Bible module"
 msgstr "Abrir módulo de Bíblia do MySword"
 
-#: src/window.c:728
+#: src/window.c:778
 msgid "MySword Bibles (*.bbl.mybible)"
 msgstr "Bíblias do MySword (*.bbl.mybible)"
 
-#: src/window.c:760
+#: src/window.c:810
 msgid "Text font"
 msgstr "Fonte do texto"
 
-#: src/window.c:813
+#: src/window.c:863
 msgid "A light Bible reader for MySword modules."
 msgstr "Um leitor de Bíblia leve para módulos do MySword."
 
-#: src/window.c:866
+#: src/window.c:916
 msgid "Abbreviation"
 msgstr "Abreviação"
 
-#: src/window.c:866
+#: src/window.c:916
 msgid "Description"
 msgstr "Descrição"
 
-#: src/window.c:867
+#: src/window.c:917
 msgid "Language"
 msgstr "Idioma"
 
-#: src/window.c:867
+#: src/window.c:917
 msgid "Version"
 msgstr "Versão"
 
-#: src/window.c:868
+#: src/window.c:918
 msgid "Published"
 msgstr "Publicação"
 
-#: src/window.c:868
+#: src/window.c:918
 msgid "Version date"
 msgstr "Data da versão"
 
-#: src/window.c:869
+#: src/window.c:919
 msgid "Author"
 msgstr "Autor"
 
-#: src/window.c:869
+#: src/window.c:919
 msgid "Publisher"
 msgstr "Editora"
 
-#: src/window.c:870
+#: src/window.c:920
 msgid "Creator"
 msgstr "Criador"
 
-#: src/window.c:870
+#: src/window.c:920
 msgid "Source"
 msgstr "Fonte"
 
-#: src/window.c:887
+#: src/window.c:937
 msgid "About the module"
 msgstr "Sobre o módulo"
 
-#: src/window.c:930
+#: src/window.c:980
 #, c-format
 msgid "%d book"
 msgid_plural "%d books"
 msgstr[0] "%d livro"
 msgstr[1] "%d livros"
 
-#: src/window.c:932
+#: src/window.c:982
 msgid "Strong's numbers"
 msgstr "números de Strong"
 
-#: src/window.c:934
+#: src/window.c:984
 msgid "right to left"
 msgstr "da direita para a esquerda"
 
-#: src/window.c:936
+#: src/window.c:986
 msgid "verse rules"
 msgstr "regras de versículo"
 
-#: src/window.c:937
+#: src/window.c:987
 msgid "Contents"
 msgstr "Conteúdo"
 
-#: src/window.c:939
+#: src/window.c:989
 msgid "File"
 msgstr "Arquivo"
 
-#: src/window.c:950
+#: src/window.c:1000
 msgid "Editorial comments"
 msgstr "Comentários editoriais"
 
-#: src/window.c:1012
+#: src/window.c:1062
 msgid "_File"
 msgstr "_Arquivo"
 
-#: src/window.c:1013
+#: src/window.c:1063
 msgid "_Open module…"
 msgstr "_Abrir módulo…"
 
-#: src/window.c:1015
+#: src/window.c:1065
 msgid "_Quit"
 msgstr "_Sair"
 
-#: src/window.c:1017
+#: src/window.c:1067
 msgid "_View"
 msgstr "_Exibir"
 
-#: src/window.c:1018
+#: src/window.c:1068
 msgid "_Strong's numbers"
 msgstr "Números de _Strong"
 
-#: src/window.c:1019
+#: src/window.c:1069
 msgid "_Footnotes"
 msgstr "_Notas de rodapé"
 
-#: src/window.c:1020
+#: src/window.c:1070
 msgid "Words of Jesus in _red"
 msgstr "Palavras de Jesus em _vermelho"
 
-#: src/window.c:1021
+#: src/window.c:1071
 msgid "_Paragraph layout"
 msgstr "Modo _parágrafo"
 
-#: src/window.c:1023
+#: src/window.c:1073
 msgid "Pa_rallel Bibles…"
 msgstr "Bíblias pa_ralelas…"
 
-#: src/window.c:1025
+#: src/window.c:1074
+msgid "Module _options"
+msgstr "_Opções do módulo"
+
+#: src/window.c:1078
 msgid "Zoom _in"
 msgstr "_Aumentar texto"
 
-#: src/window.c:1028
+#: src/window.c:1081
 msgid "Zoom _out"
 msgstr "_Diminuir texto"
 
-#: src/window.c:1030
+#: src/window.c:1083
 msgid "_Normal size"
 msgstr "Tamanho n_ormal"
 
-#: src/window.c:1031
+#: src/window.c:1084
 msgid "_Font…"
 msgstr "_Fonte…"
 
-#: src/window.c:1033
+#: src/window.c:1086
 msgid "_Go"
 msgstr "_Ir"
 
-#: src/window.c:1034
+#: src/window.c:1087
 msgid "_Back"
 msgstr "_Voltar"
 
-#: src/window.c:1035
+#: src/window.c:1088
 msgid "_Forward"
 msgstr "A_vançar"
 
-#: src/window.c:1037
+#: src/window.c:1090
 msgid "_Previous chapter"
 msgstr "Capítulo _anterior"
 
-#: src/window.c:1038
+#: src/window.c:1091
 msgid "_Next chapter"
 msgstr "_Próximo capítulo"
 
-#: src/window.c:1040
+#: src/window.c:1093
 msgid "_Go to reference…"
 msgstr "_Ir para referência…"
 
-#: src/window.c:1041
+#: src/window.c:1094
 msgid "_Search…"
 msgstr "_Buscar…"
 
-#: src/window.c:1043
+#: src/window.c:1096
 msgid "_Help"
 msgstr "Aj_uda"
 
-#: src/window.c:1044
+#: src/window.c:1097
 msgid "About the _module…"
 msgstr "Sobre o _módulo…"
 
-#: src/window.c:1045
+#: src/window.c:1098
 msgid "_About"
 msgstr "_Sobre"
 
-#: src/window.c:1087
+#: src/window.c:1140
 msgid "Bible module"
 msgstr "Módulo de Bíblia"
 
-#: src/window.c:1096
+#: src/window.c:1149
 msgid "Book"
 msgstr "Livro"
 
-#: src/window.c:1101
+#: src/window.c:1154
 msgid "Chapter"
 msgstr "Capítulo"
 
-#: src/window.c:1104
+#: src/window.c:1157
 msgid "Back (Alt+Left)"
 msgstr "Voltar (Alt+Esquerda)"
 
-#: src/window.c:1105
+#: src/window.c:1158
 msgid "Forward (Alt+Right)"
 msgstr "Avançar (Alt+Direita)"
 
-#: src/window.c:1109
+#: src/window.c:1162
 msgid "Go to a reference, e.g. \"Jo 3:16\", \"1Co 13\" or \"gn 1\" (Ctrl+L)"
 msgstr ""
 "Ir para uma referência, ex.: \"Jo 3:16\", \"1Co 13\" ou \"gn 1\" (Ctrl+L)"
 
-#: src/window.c:1118
+#: src/window.c:1171
 msgid "Go to:"
 msgstr "Ir para:"
 
-#: src/window.c:1231
+#: src/window.c:1284
 #, c-format
 msgid ""
 "No MySword Bible module found.\n"

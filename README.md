@@ -21,6 +21,9 @@ but a separate program; it may end up in a future `kidesktop-extras`.
 - Modules' own formatting: `VerseRules` (the regex substitutions MySword
   applies to each verse) and the simple part of their `CustomCSS` — class
   colors, italics, bold, superscripts, hidden and block elements.
+- View → Module options: the switches modules define in their VerseRules
+  (Hebrew vowels and accents, lexeme, glosses, variants…), remembered per
+  module.
 - Strong's numbers as small clickable superscripts (F9 hides them).
 - Footnotes as clickable markers that open a popup.
 - Verse-per-line or paragraph layout.

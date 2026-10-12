@@ -3,14 +3,23 @@
 
 #include <string.h>
 
+/* One replacement as GRegex wants it. */
+typedef struct {
+    char *repl;
+    gboolean literal;  /* no group references: g_regex_replace_literal */
+    gboolean identity; /* replaces the match with itself: skipped */
+} Repl;
+
 typedef struct {
     GRegex *re;
-    char *repl; /* in GRegex syntax */
-    gboolean literal;
+    Repl on, off;      /* off: the third field, used when switched off */
+    int option;        /* index in KsRules.options, -1: always on */
 } Rule;
 
 struct KsRules {
-    GArray *rules; /* Rule */
+    GArray *rules;      /* Rule */
+    GPtrArray *options; /* option names, in order of first appearance */
+    GArray *off;        /* gboolean per option: switched off */
 };
 
 /* "$1", "${1}", "$$" -> GRegex's "\g<1>", "$"; backslashes are literal in
@@ -82,6 +91,28 @@ static gboolean is_identity(const char *pattern, const char *repl)
     return TRUE;
 }
 
+static void make_repl(Repl *r, const char *pattern, const char *s, int n)
+{
+    r->repl = convert_replacement(s, n, &r->literal);
+    if (r->literal) { /* used as is */
+        g_free(r->repl);
+        r->repl = g_strndup(s, n);
+    }
+    r->identity = is_identity(pattern, r->repl);
+}
+
+static int option_index(KsRules *r, const char *name)
+{
+    gboolean off = FALSE;
+
+    for (guint i = 0; i < r->options->len; i++)
+        if (strcmp(g_ptr_array_index(r->options, i), name) == 0)
+            return (int)i;
+    g_ptr_array_add(r->options, g_strdup(name));
+    g_array_append_val(r->off, off);
+    return (int)r->options->len - 1;
+}
+
 KsRules *ks_rules_new(const char *src, int *n_invalid)
 {
     KsRules *r;
@@ -94,46 +125,38 @@ KsRules *ks_rules_new(const char *src, int *n_invalid)
         return NULL;
     r = g_new0(KsRules, 1);
     r->rules = g_array_new(FALSE, FALSE, sizeof(Rule));
+    r->options = g_ptr_array_new_with_free_func(g_free);
+    r->off = g_array_new(FALSE, FALSE, sizeof(gboolean));
     lines = g_strsplit(src, "\n", -1);
     for (int i = 0; lines[i]; i++) {
-        char *line = lines[i], *tab, *repl_end;
+        char *line = lines[i], **f;
         size_t len = strlen(line);
-        Rule rule;
+        Rule rule = { 0 };
         GError *err = NULL;
+        int nf;
 
         if (len && line[len - 1] == '\r')
             line[--len] = '\0';
-        tab = strchr(line, '\t');
-        if (!*line || tab == line)
+        if (!*line || *line == '\t')
             continue;
-        if (tab)
-            *tab = '\0';
-        rule.re = g_regex_new(line, G_REGEX_OPTIMIZE, 0, &err);
+        /* pattern, replacement, replacement when off, name */
+        f = g_strsplit(line, "\t", 4);
+        nf = g_strv_length(f);
+        rule.re = g_regex_new(f[0], G_REGEX_OPTIMIZE, 0, &err);
         if (!rule.re) {
             g_error_free(err);
+            g_strfreev(f);
             bad++;
             continue;
         }
-        if (tab) {
-            int n;
-
-            repl_end = strchr(tab + 1, '\t');
-            n = repl_end ? repl_end - (tab + 1) : (int)strlen(tab + 1);
-            rule.repl = convert_replacement(tab + 1, n, &rule.literal);
-            if (rule.literal) { /* no group references: used as is */
-                g_free(rule.repl);
-                rule.repl = g_strndup(tab + 1, n);
-            }
-        } else {
-            rule.repl = g_strdup("");
-            rule.literal = TRUE;
-        }
-        if (is_identity(line, rule.repl)) {
-            g_regex_unref(rule.re);
-            g_free(rule.repl);
-            continue;
+        make_repl(&rule.on, f[0], nf > 1 ? f[1] : "", nf > 1 ? (int)strlen(f[1]) : 0);
+        rule.option = -1;
+        if (nf > 3 && *f[3]) {
+            rule.option = option_index(r, g_strstrip(f[3]));
+            make_repl(&rule.off, f[0], f[2], strlen(f[2]));
         }
         g_array_append_val(r->rules, rule);
+        g_strfreev(f);
     }
     g_strfreev(lines);
     if (n_invalid)
@@ -153,9 +176,12 @@ void ks_rules_free(KsRules *r)
         Rule *rule = &g_array_index(r->rules, Rule, i);
 
         g_regex_unref(rule->re);
-        g_free(rule->repl);
+        g_free(rule->on.repl);
+        g_free(rule->off.repl);
     }
     g_array_free(r->rules, TRUE);
+    g_ptr_array_free(r->options, TRUE);
+    g_array_free(r->off, TRUE);
     g_free(r);
 }
 
@@ -164,20 +190,42 @@ int ks_rules_count(const KsRules *r)
     return r ? (int)r->rules->len : 0;
 }
 
+int ks_rules_n_options(const KsRules *r)
+{
+    return r ? (int)r->options->len : 0;
+}
+
+const char *ks_rules_option_name(const KsRules *r, int i)
+{
+    return g_ptr_array_index(r->options, i);
+}
+
+gboolean ks_rules_option_on(const KsRules *r, int i)
+{
+    return !g_array_index(r->off, gboolean, i);
+}
+
+void ks_rules_set_option(KsRules *r, int i, gboolean on)
+{
+    g_array_index(r->off, gboolean, i) = !on;
+}
+
 char *ks_rules_apply(const KsRules *r, const char *text)
 {
     char *cur = NULL;
 
     for (guint i = 0; r && i < r->rules->len; i++) {
         const Rule *rule = &g_array_index(r->rules, Rule, i);
+        const Repl *rp = rule->option >= 0 && g_array_index(r->off, gboolean, rule->option) ? &rule->off
+                                                                                               : &rule->on;
         const char *in = cur ? cur : text;
         char *out;
 
-        if (!g_regex_match(rule->re, in, 0, NULL))
+        if (rp->identity || !g_regex_match(rule->re, in, 0, NULL))
             continue;
         /* A rule that hits PCRE's backtracking limit leaves the verse as is. */
-        out = rule->literal ? g_regex_replace_literal(rule->re, in, -1, 0, rule->repl, 0, NULL)
-                            : g_regex_replace(rule->re, in, -1, 0, rule->repl, 0, NULL);
+        out = rp->literal ? g_regex_replace_literal(rule->re, in, -1, 0, rp->repl, 0, NULL)
+                          : g_regex_replace(rule->re, in, -1, 0, rp->repl, 0, NULL);
         if (out) {
             g_free(cur);
             cur = out;

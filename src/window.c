@@ -43,7 +43,7 @@ typedef struct {
     PangoFontDescription *font;
 
     GtkWidget *win, *mod_combo, *book_combo, *chap_spin, *entry, *status;
-    GtkWidget *back_btn, *fwd_btn, *back_item, *fwd_item, *info_item, *search_item, *par_item;
+    GtkWidget *back_btn, *fwd_btn, *back_item, *fwd_item, *info_item, *search_item, *par_item, *opts_item;
     GtkListStore *mod_store, *book_store;
     GtkCheckMenuItem *chk_strong, *chk_notes, *chk_red, *chk_para;
     guint status_ctx;
@@ -281,6 +281,53 @@ static void hist_go(KsWin *w, GArray *from, GArray *to)
     navigate(w, p.book, p.chapter, p.verse, 0, 0, FALSE);
 }
 
+/* ---- module options (named VerseRules) -------------------------------------- */
+
+/* The saved state of m's options; call after opening it. */
+static void load_options(KsWin *w, KsModule *m)
+{
+    for (int i = 0; i < ks_rules_n_options(m->rules); i++)
+        ks_rules_set_option(m->rules, i, ks_config_rule_on(w->cfg, m->path, ks_rules_option_name(m->rules, i)));
+}
+
+static void on_option_toggled(GtkCheckMenuItem *mi, KsWin *w)
+{
+    int i = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(mi), "option"));
+    gboolean on = gtk_check_menu_item_get_active(mi);
+    KsModule *m = w->mod;
+
+    if (w->busy || !m || i >= ks_rules_n_options(m->rules))
+        return;
+    ks_rules_set_option(m->rules, i, on);
+    ks_config_set_rule(w->cfg, m->path, ks_rules_option_name(m->rules, i), on);
+    /* The verse texts change: the chapter is read again, the index rebuilt. */
+    ks_search_pane_set_module(w->search, NULL);
+    ks_search_pane_set_module(w->search, m);
+    navigate(w, w->book, w->chapter, ks_view_top_verse(w->view), 0, 0, FALSE);
+}
+
+/* View > Module options: one check item per option of the main module. */
+static void fill_options(KsWin *w)
+{
+    GtkWidget *menu = gtk_menu_new();
+    int n = w->mod ? ks_rules_n_options(w->mod->rules) : 0;
+
+    w->busy = TRUE;
+    for (int i = 0; i < n; i++) {
+        GtkWidget *mi = gtk_check_menu_item_new_with_label(ks_rules_option_name(w->mod->rules, i));
+
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(mi), ks_rules_option_on(w->mod->rules, i));
+        g_object_set_data(G_OBJECT(mi), "option", GINT_TO_POINTER(i));
+        g_signal_connect(mi, "toggled", G_CALLBACK(on_option_toggled), w);
+        gtk_menu_shell_append(GTK_MENU_SHELL(menu), mi);
+    }
+    gtk_widget_show_all(menu);
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(w->opts_item), menu);
+    gtk_widget_set_sensitive(w->opts_item, n > 0);
+    gtk_widget_set_tooltip_text(w->opts_item, n ? NULL : _("This module has no options."));
+    w->busy = FALSE;
+}
+
 /* ---- parallel Bibles ------------------------------------------------------ */
 
 static void parallels_changed(KsWin *w, gboolean show);
@@ -420,6 +467,7 @@ static gboolean add_parallel(KsWin *w, KsModule *m, gboolean quiet)
         g_error_free(err);
         return FALSE;
     }
+    load_options(w, m);
     g_ptr_array_add(w->par, m);
     return TRUE;
 }
@@ -559,6 +607,7 @@ static gboolean switch_module(KsWin *w, KsModule *m, gboolean show)
         g_error_free(err);
         return FALSE;
     }
+    load_options(w, m);
     top = old ? ks_view_top_verse(w->view) : 0;
     w->mod = m;
     g_ptr_array_remove(w->par, m); /* a parallel becoming the main one */
@@ -567,6 +616,7 @@ static gboolean switch_module(KsWin *w, KsModule *m, gboolean show)
     if (old && !g_ptr_array_find(w->par, old, NULL))
         ks_module_close(old);
     fill_books(w);
+    fill_options(w);
     ks_search_pane_set_module(w->search, m);
     gtk_widget_set_sensitive(w->book_combo, TRUE);
     gtk_widget_set_sensitive(w->chap_spin, TRUE);
@@ -1021,6 +1071,9 @@ static GtkWidget *build_menus(KsWin *w, GtkAccelGroup *ag)
     w->chk_para = check_item(m, ag, _("_Paragraph layout"), 0, w->cfg->paragraphs, w);
     separator(m);
     w->par_item = menu_item(m, ag, _("Pa_rallel Bibles…"), GDK_KEY_F8, 0, cmd_parallel, w);
+    w->opts_item = gtk_menu_item_new_with_mnemonic(_("Module _options"));
+    gtk_menu_shell_append(GTK_MENU_SHELL(m), w->opts_item);
+    gtk_widget_set_sensitive(w->opts_item, FALSE);
     separator(m);
     mi = menu_item(m, ag, _("Zoom _in"), GDK_KEY_plus, GDK_CONTROL_MASK, cmd_zoom_in, w);
     gtk_widget_add_accelerator(mi, "activate", ag, GDK_KEY_equal, GDK_CONTROL_MASK, 0);

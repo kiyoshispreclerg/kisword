@@ -88,6 +88,31 @@ int main(void)
     CHECK(ks_rules_apply(r, "nothing here") == NULL); /* unchanged */
     ks_rules_free(r);
     CHECK(ks_rules_new("", NULL) == NULL && ks_rules_new(NULL, NULL) == NULL);
+
+    /* Options: ETCBC-like rules, two sharing a name (tr's "Variant"). */
+    r = ks_rules_new("(\u05b8)\t$1\t\tHebrew vowels\n"
+                     "<V1>(.*?)<v1>\t{$1}\t$1\tVariant\n"
+                     "<V2>(.*?)<v2>\t[$1]\t\tVariant\n"
+                     "x\ty", &bad);
+    if (!r) {
+        printf("FAIL: rules with options not loaded\n");
+        return 1;
+    }
+    CHECK(ks_rules_n_options(r) == 2 && bad == 0);
+    CHECK(strcmp(ks_rules_option_name(r, 0), "Hebrew vowels") == 0 && ks_rules_option_on(r, 0));
+    {
+        char *out = ks_rules_apply(r, "\xd7\x91\xd6\xb8 <V1>a<v1><V2>b<v2> x");
+
+        CHECK(out && strcmp(out, "\xd7\x91\xd6\xb8 {a}[b] y") == 0); /* identity "on": untouched */
+        g_free(out);
+        ks_rules_set_option(r, 0, FALSE);
+        ks_rules_set_option(r, 1, FALSE);
+        CHECK(!ks_rules_option_on(r, 1));
+        out = ks_rules_apply(r, "\xd7\x91\xd6\xb8 <V1>a<v1><V2>b<v2> x");
+        CHECK(out && strcmp(out, "\xd7\x91 a y") == 0); /* vowel and second variant gone */
+        g_free(out);
+    }
+    ks_rules_free(r);
     CHECK(ks_rules_new("((\tx", &bad) == NULL && bad == 1);
 
     /* Colors. */

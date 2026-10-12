@@ -72,6 +72,7 @@ KsConfig *ks_config_load(void)
     c->modules_dirs = g_new0(char *, 1);
     c->module_files = g_new0(char *, 1);
     c->parallel = g_new0(char *, 1);
+    c->rules_off = g_new0(char *, 1);
     c->book = 1;
     c->chapter = 1;
     c->font = g_strdup(KS_DEFAULT_FONT);
@@ -87,6 +88,7 @@ KsConfig *ks_config_load(void)
         get_str(kf, "module", &c->module);
         get_list(kf, "parallel", &c->parallel);
         get_bool(kf, "interleave", &c->interleave);
+        get_list(kf, "rules_off", &c->rules_off);
         get_int(kf, "book", &c->book);
         get_int(kf, "chapter", &c->chapter);
         get_int(kf, "verse", &c->verse);
@@ -120,6 +122,8 @@ void ks_config_save(const KsConfig *c)
     g_key_file_set_string_list(kf, GROUP, "parallel", (const char *const *)c->parallel,
                                g_strv_length(c->parallel));
     g_key_file_set_boolean(kf, GROUP, "interleave", c->interleave);
+    g_key_file_set_string_list(kf, GROUP, "rules_off", (const char *const *)c->rules_off,
+                               g_strv_length(c->rules_off));
     g_key_file_set_integer(kf, GROUP, "book", c->book);
     g_key_file_set_integer(kf, GROUP, "chapter", c->chapter);
     g_key_file_set_integer(kf, GROUP, "verse", c->verse);
@@ -148,10 +152,47 @@ void ks_config_free(KsConfig *c)
     g_strfreev(c->modules_dirs);
     g_strfreev(c->module_files);
     g_strfreev(c->parallel);
+    g_strfreev(c->rules_off);
     g_free(c->module);
     g_free(c->font);
     g_free(c->book_names);
     g_free(c);
+}
+
+/* "kjv.bbl.mybible|Show Hebrew vowels": by file name, so the setting
+ * follows the module to another folder. */
+static char *rule_key(const char *module_path, const char *option)
+{
+    char *base = g_path_get_basename(module_path);
+    char *key = g_strdup_printf("%s|%s", base, option);
+
+    g_free(base);
+    return key;
+}
+
+gboolean ks_config_rule_on(const KsConfig *c, const char *module_path, const char *option)
+{
+    char *key = rule_key(module_path, option);
+    gboolean on = !g_strv_contains((const char *const *)c->rules_off, key);
+
+    g_free(key);
+    return on;
+}
+
+void ks_config_set_rule(KsConfig *c, const char *module_path, const char *option, gboolean on)
+{
+    char *key = rule_key(module_path, option);
+    GPtrArray *a = g_ptr_array_new();
+
+    for (int i = 0; c->rules_off[i]; i++)
+        if (strcmp(c->rules_off[i], key) != 0)
+            g_ptr_array_add(a, g_strdup(c->rules_off[i]));
+    if (!on)
+        g_ptr_array_add(a, g_strdup(key));
+    g_ptr_array_add(a, NULL);
+    g_strfreev(c->rules_off);
+    c->rules_off = (char **)g_ptr_array_free(a, FALSE);
+    g_free(key);
 }
 
 void ks_config_add_module_file(KsConfig *c, const char *path)
