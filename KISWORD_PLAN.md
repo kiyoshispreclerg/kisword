@@ -387,6 +387,19 @@ janela. Gravado ao fechar e ao trocar módulo; nunca a cada clique.
 - **Bíblias paralelas**: modo intercalado (um `GtkTextView`, verso a verso de cada
   módulo — alinhamento perfeito, simples) e modo colunas (`GtkHPaned` com rolagem
   sincronizada pelo verso no topo, usando as marcas `vN`).
+  **Feito** (Exibir → Bíblias paralelas, F8; `parallel=`/`interleave=` na config):
+  - Até 7 paralelas. Intercalado: o mesmo `KsView` recebe vários módulos e mostra cada
+    verso uma vez por módulo, com a sigla na frente e um respiro entre versos; sempre
+    verso por linha. Direção por linha com tag `direction` **e** um RLM no início das
+    linhas RTL — sem ele o Pango deduz LTR pela sigla latina.
+  - Colunas: um `KsView` por módulo numa `GtkHBox` homogênea (em vez de `GtkHPaned`
+    aninhados), cada uma com cabeçalho (sigla, título na dica, botão de fechar). A
+    rolagem sincroniza pelo verso do topo **e** pela fração já rolada dentro dele, para
+    as colunas andarem juntas suavemente e não aos saltos de verso em verso.
+  - Alinhamento por número de verso; módulo sem o livro mostra "Este módulo não tem este
+    capítulo". Copiar no intercalado dá `16 (KJV) texto` por linha.
+  - Busca, histórico e posição salva seguem o módulo principal; um módulo paralelo
+    escolhido como principal sai das paralelas.
 - `VerseRules` e `span class` (seção 1.4). **Feito** (`rules.c`, `style.c`):
   - Formato real: `padrão⇥substituição[⇥substituição desligada⇥nome]`; as de 4 campos
     são opções que o MySword deixa ligar/desligar — aplicamos a forma "ligada". Sintaxe

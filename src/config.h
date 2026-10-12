@@ -10,6 +10,8 @@ typedef struct {
     char **modules_dirs;  /* extra module directories (besides the default one) */
     char **module_files;  /* modules opened with File > Open */
     char *module;         /* path of the last module used */
+    char **parallel;      /* paths of the parallel Bibles shown with it */
+    gboolean interleave;  /* parallels verse by verse in one view, not in columns */
     int book, chapter, verse;
     char *font;           /* Pango font description string */
     char *book_names;     /* "pt", "en", or NULL = from the locale */

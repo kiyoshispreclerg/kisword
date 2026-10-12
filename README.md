@@ -29,6 +29,9 @@ but a separate program; it may end up in a future `kidesktop-extras`.
   limited to the Old/New Testament or the current book. A Strong's number
   (`H430`, `G26`) finds the verses tagged with it. The index is built the
   first time you search a module, in the background.
+- Parallel Bibles (F8): up to seven next to the main one, side by side in
+  columns that scroll together, or interleaved verse by verse in one view
+  (right-to-left modules keep their direction line by line).
 - Copy (Ctrl+C) gives whole verses as plain text with the reference:
   `Jo 3:16-17 (KJV)` followed by the verses.
 - Back/forward history, zoom, font choice, last position remembered.
@@ -37,7 +40,7 @@ but a separate program; it may end up in a future `kidesktop-extras`.
 - Right-to-left modules are laid out right-to-left.
 - Interface in English and Brazilian Portuguese; book names follow the locale.
 
-Not yet: parallel Bibles, dictionaries/commentaries (see
+Not yet: dictionaries and commentaries (see
 [KISWORD_PLAN.md](KISWORD_PLAN.md)).
 
 **Encrypted modules are not supported.** Some MySword modules (for example the
@@ -75,6 +78,7 @@ Put modules in `~/.local/share/kisword/modules/`, list more directories in
 |---|---|
 | Ctrl+L | Go to reference |
 | Ctrl+F | Search (Esc closes the panel) |
+| F8 | Parallel Bibles |
 | Ctrl+PgUp / Ctrl+PgDn | Previous / next chapter |
 | Alt+← / Alt+→ | Back / forward |
 | Ctrl++ / Ctrl+- / Ctrl+0 | Zoom |

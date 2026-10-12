@@ -22,7 +22,8 @@
 
 typedef struct {
     int verse;
-    char *text; /* raw verse text from the module */
+    int mod;    /* index in KsView.mods */
+    char *text; /* verse text from the module (VerseRules applied) */
     int start, end;
 } KsVerse;
 
@@ -36,14 +37,17 @@ struct KsView {
     GtkWidget *scroll, *text;
     GtkTextTagTable *table;
     GtkTextTag *t_hl, *t_indent[KS_MAX_INDENT + 1], *t_verse, *t_italic, *t_bold, *t_underline,
-        *t_red, *t_otquote, *t_sup, *t_sub, *t_title, *t_strong, *t_note;
+        *t_red, *t_otquote, *t_sup, *t_sub, *t_title, *t_strong, *t_note, *t_label, *t_group, *t_rtl,
+        *t_ltr, *t_absent;
     GdkCursor *hand, *ibeam;
     gboolean over_link;
     KsViewOptions opt;
 
-    KsModule *mod;
+    KsModule *mod;  /* mods[0], NULL when nothing is shown */
+    KsModule *mods[KS_VIEW_MAX_MODS];
+    int nmods;      /* more than one: interleaved, verse by verse */
     int book, chapter, hl_from, hl_to;
-    GArray *verses; /* KsVerse */
+    GArray *verses; /* KsVerse, in verse order, then module order */
     GArray *notes;  /* KsNote */
     GtkWidget *popup;
 };
@@ -272,27 +276,60 @@ static void render(KsView *v, int scroll_verse)
     r.v = v;
     r.b = b;
     r.line_start = TRUE;
-    for (guint i = 0; v->opt.paragraphs && i < v->verses->len && !r.para; i++)
+    /* Interleaved modules are always a verse per line. */
+    for (guint i = 0; v->nmods == 1 && v->opt.paragraphs && i < v->verses->len && !r.para; i++)
         r.para = strstr(g_array_index(v->verses, KsVerse, i).text, "<CM>") != NULL;
     gtk_text_buffer_get_end_iter(b, &r.it);
 
     for (guint i = 0; i < v->verses->len; i++) {
         KsVerse *kv = &g_array_index(v->verses, KsVerse, i);
+        const KsModule *m = v->mods[kv->mod];
+        gboolean group = i == 0 || g_array_index(v->verses, KsVerse, i - 1).verse != kv->verse;
         char name[24];
 
         g_snprintf(name, sizeof name, "v%d", kv->verse);
         kv->start = gtk_text_iter_get_offset(&r.it);
-        gtk_text_buffer_create_mark(b, name, &r.it, TRUE);
+        if (!gtk_text_buffer_get_mark(b, name))
+            gtk_text_buffer_create_mark(b, name, &r.it, TRUE);
+        if (v->nmods > 1) {
+            GtkTextTag *tags[1] = { v->t_label };
+
+            /* An RLM first: Pango takes a paragraph's direction from its
+             * first strong character, and the label is Latin. */
+            if (m->rtl)
+                put(&r, "\xe2\x80\x8f", 3, NULL, 0);
+            put(&r, ks_module_label(m), strlen(ks_module_label(m)), tags, 1);
+            put(&r, " ", 1, NULL, 0);
+        }
         r.verse = kv->verse;
         r.num_pending = TRUE;
         r.in_title = FALSE;
         r.prev_strong = FALSE;
-        ks_gbf_parse(kv->text, v->mod->css, span_cb, &r);
+        ks_gbf_parse(kv->text, m->css, span_cb, &r);
         title_edge(&r, FALSE);
         ensure_num(&r);
         kv->end = gtk_text_iter_get_offset(&r.it);
         if (!r.line_start)
             put(&r, r.para ? " " : "\n", 1, NULL, 0);
+        if (v->nmods > 1) {
+            /* Each module's lines get its own direction; a blank above
+             * every verse keeps the groups apart. */
+            GtkTextIter a, z;
+
+            gtk_text_buffer_get_iter_at_offset(b, &a, kv->start);
+            gtk_text_buffer_apply_tag(b, m->rtl ? v->t_rtl : v->t_ltr, &a, &r.it);
+            if (group && i > 0) {
+                z = a;
+                gtk_text_iter_forward_to_line_end(&z);
+                gtk_text_buffer_apply_tag(b, v->t_group, &a, &z);
+            }
+        }
+    }
+    if (!v->verses->len) {
+        GtkTextTag *tags[1] = { v->t_absent };
+        const char *msg = _("This module does not have this chapter.");
+
+        put(&r, msg, strlen(msg), tags, 1);
     }
 
     if (v->hl_from) {
@@ -548,14 +585,22 @@ static void copy_cb(GtkTextView *tv, KsView *v)
     i1 = MAX(verse_index_at(v, gtk_text_iter_get_offset(&e) - 1), i0);
 
     ref = ks_ref_format(v->book, v->chapter, g_array_index(v->verses, KsVerse, i0).verse,
-                        i1 > i0 ? g_array_index(v->verses, KsVerse, i1).verse : 0);
+                        g_array_index(v->verses, KsVerse, i1).verse > g_array_index(v->verses, KsVerse, i0).verse
+                            ? g_array_index(v->verses, KsVerse, i1).verse
+                            : 0);
     g = g_string_new(NULL);
-    g_string_printf(g, "%s (%s)\n", ref, ks_module_label(v->mod));
+    if (v->nmods > 1)
+        g_string_printf(g, "%s\n", ref);
+    else
+        g_string_printf(g, "%s (%s)\n", ref, ks_module_label(v->mod));
     for (int i = i0; i <= i1; i++) {
         const KsVerse *kv = &g_array_index(v->verses, KsVerse, i);
-        char *plain = ks_gbf_plain(kv->text, v->mod->css);
+        char *plain = ks_gbf_plain(kv->text, v->mods[kv->mod]->css);
 
-        if (i1 > i0)
+        /* Interleaved: "16 (KJV) For God so loved..." */
+        if (v->nmods > 1)
+            g_string_append_printf(g, "%d (%s) %s\n", kv->verse, ks_module_label(v->mods[kv->mod]), plain);
+        else if (i1 > i0)
             g_string_append_printf(g, "%d %s\n", kv->verse, plain);
         else
             g_string_append(g, plain);
@@ -592,6 +637,8 @@ static void style_set_cb(GtkWidget *w, GtkStyle *prev, KsView *v)
 
     (void)prev;
     g_object_set(v->t_verse, "foreground-gdk", &dim, NULL);
+    g_object_set(v->t_label, "foreground-gdk", &dim, NULL);
+    g_object_set(v->t_absent, "foreground-gdk", &dim, NULL);
     g_object_set(v->t_hl, "background-gdk", &hl, NULL);
 }
 
@@ -642,6 +689,11 @@ KsView *ks_view_new(const KsViewOptions *opt)
                           "rise", 6 * PANGO_SCALE, NULL);
     v->t_note = new_tag(v, "note", "foreground", LINK_COLOR, "scale", PANGO_SCALE_X_SMALL,
                         "rise", 6 * PANGO_SCALE, "weight", PANGO_WEIGHT_BOLD, NULL);
+    v->t_label = new_tag(v, "label", "weight", PANGO_WEIGHT_BOLD, "scale", PANGO_SCALE_X_SMALL, NULL);
+    v->t_group = new_tag(v, "group", "pixels-above-lines", 10, NULL);
+    v->t_rtl = new_tag(v, "rtl", "direction", GTK_TEXT_DIR_RTL, NULL);
+    v->t_ltr = new_tag(v, "ltr", "direction", GTK_TEXT_DIR_LTR, NULL);
+    v->t_absent = new_tag(v, "absent", "style", PANGO_STYLE_ITALIC, NULL);
 
     b = gtk_text_buffer_new(v->table);
     v->text = gtk_text_view_new_with_buffer(b);
@@ -693,25 +745,49 @@ void ks_view_set_font(KsView *v, const PangoFontDescription *font)
     gtk_widget_modify_font(v->text, (PangoFontDescription *)font);
 }
 
+typedef struct {
+    KsView *v;
+    int mod;
+} Collect;
+
 static void collect_cb(int verse, const char *text, void *data)
 {
-    KsView *v = data;
-    KsVerse kv = { verse, g_strdup(text), 0, 0 };
+    Collect *c = data;
+    KsVerse kv = { verse, c->mod, g_strdup(text), 0, 0 };
 
-    g_array_append_val(v->verses, kv);
+    g_array_append_val(c->v->verses, kv);
 }
 
-void ks_view_show(KsView *v, KsModule *m, int book, int chapter, int scroll_verse, int hl_from, int hl_to)
+static gint by_verse(gconstpointer a, gconstpointer b)
+{
+    const KsVerse *x = a, *y = b;
+
+    return x->verse != y->verse ? (x->verse > y->verse) - (x->verse < y->verse) : x->mod - y->mod;
+}
+
+void ks_view_show(KsView *v, KsModule *const *mods, int nmods, int book, int chapter, int scroll_verse,
+                  int hl_from, int hl_to)
 {
     popup_close(v);
     clear_chapter(v);
-    v->mod = m;
+    v->nmods = CLAMP(nmods, 1, KS_VIEW_MAX_MODS);
+    for (int i = 0; i < v->nmods; i++)
+        v->mods[i] = mods[i];
+    v->mod = mods[0];
     v->book = book;
     v->chapter = chapter;
     v->hl_from = hl_from;
     v->hl_to = hl_to;
-    gtk_widget_set_direction(v->text, m->rtl ? GTK_TEXT_DIR_RTL : GTK_TEXT_DIR_LTR);
-    ks_module_chapter(m, book, chapter, collect_cb, v);
+    /* Interleaved: the direction goes per line, with tags. */
+    gtk_widget_set_direction(v->text, v->nmods == 1 && v->mod->rtl ? GTK_TEXT_DIR_RTL : GTK_TEXT_DIR_LTR);
+    for (int i = 0; i < v->nmods; i++) {
+        Collect c = { v, i };
+
+        if (book <= KS_MAX_BOOK && v->mods[i]->nchapters[book])
+            ks_module_chapter(v->mods[i], book, chapter, collect_cb, &c);
+    }
+    if (v->nmods > 1)
+        g_array_sort(v->verses, by_verse);
     render(v, scroll_verse ? scroll_verse : hl_from);
 }
 
@@ -722,6 +798,7 @@ void ks_view_message(KsView *v, const char *text)
     popup_close(v);
     clear_chapter(v);
     v->mod = NULL;
+    v->nmods = 0;
     gtk_text_buffer_set_text(b, text, -1);
     gtk_text_view_set_buffer(GTK_TEXT_VIEW(v->text), b);
     g_object_unref(b);
@@ -740,4 +817,95 @@ int ks_view_top_verse(KsView *v)
     gtk_text_view_get_iter_at_location(tv, &it, r.x, r.y);
     i = verse_index_at(v, gtk_text_iter_get_offset(&it));
     return g_array_index(v->verses, KsVerse, MAX(i, 0)).verse;
+}
+
+/* Verses kv[i0..] with the same number as kv[i0]: the buffer y where that
+ * verse starts and where the next one does. */
+static void group_yrange(KsView *v, guint i0, int *y0, int *y1)
+{
+    GtkTextView *tv = GTK_TEXT_VIEW(v->text);
+    GtkTextIter it;
+    int verse = g_array_index(v->verses, KsVerse, i0).verse, h;
+    guint i = i0;
+
+    gtk_text_buffer_get_iter_at_offset(gtk_text_view_get_buffer(tv), &it,
+                                       g_array_index(v->verses, KsVerse, i0).start);
+    gtk_text_view_get_line_yrange(tv, &it, y0, &h);
+    while (i < v->verses->len && g_array_index(v->verses, KsVerse, i).verse == verse)
+        i++;
+    if (i < v->verses->len) {
+        gtk_text_buffer_get_iter_at_offset(gtk_text_view_get_buffer(tv), &it,
+                                           g_array_index(v->verses, KsVerse, i).start);
+        gtk_text_view_get_line_yrange(tv, &it, y1, &h);
+    } else {
+        gtk_text_buffer_get_end_iter(gtk_text_view_get_buffer(tv), &it);
+        gtk_text_view_get_line_yrange(tv, &it, y1, &h);
+        *y1 += h;
+    }
+    if (*y1 <= *y0)
+        *y1 = *y0 + 1;
+}
+
+gboolean ks_view_get_anchor(KsView *v, int *verse, double *frac)
+{
+    GtkTextView *tv = GTK_TEXT_VIEW(v->text);
+    GdkRectangle r;
+    GtkTextIter it;
+    int i, y0, y1;
+
+    if (!v->mod || !v->verses->len)
+        return FALSE;
+    gtk_text_view_get_visible_rect(tv, &r);
+    gtk_text_view_get_iter_at_location(tv, &it, r.x, r.y);
+    i = MAX(verse_index_at(v, gtk_text_iter_get_offset(&it)), 0);
+    *verse = g_array_index(v->verses, KsVerse, i).verse;
+    while (i > 0 && g_array_index(v->verses, KsVerse, i - 1).verse == *verse)
+        i--;
+    group_yrange(v, i, &y0, &y1);
+    *frac = CLAMP((double)(r.y - y0) / (y1 - y0), 0.0, 1.0);
+    return TRUE;
+}
+
+void ks_view_set_anchor(KsView *v, int verse, double frac)
+{
+    GtkAdjustment *adj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(v->scroll));
+    guint i;
+    int y0, y1;
+    double y;
+
+    if (!v->mod || !v->verses->len)
+        return;
+    /* That verse, or the next one this module has. */
+    for (i = 0; i < v->verses->len && g_array_index(v->verses, KsVerse, i).verse < verse; i++)
+        ;
+    if (i == v->verses->len) {
+        y = gtk_adjustment_get_upper(adj);
+    } else {
+        group_yrange(v, i, &y0, &y1);
+        y = g_array_index(v->verses, KsVerse, i).verse == verse ? y0 + frac * (y1 - y0) : y0;
+    }
+    gtk_adjustment_set_value(adj, CLAMP(y, gtk_adjustment_get_lower(adj),
+                                        gtk_adjustment_get_upper(adj) - gtk_adjustment_get_page_size(adj)));
+}
+
+GtkAdjustment *ks_view_vadjustment(KsView *v)
+{
+    return gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(v->scroll));
+}
+
+void ks_view_free(KsView *v)
+{
+    if (!v)
+        return;
+    popup_close(v);
+    clear_chapter(v);
+    gtk_widget_destroy(v->scroll);
+    g_array_free(v->verses, TRUE);
+    g_array_free(v->notes, TRUE);
+    g_object_unref(v->table);
+    if (v->hand) {
+        gdk_cursor_unref(v->hand);
+        gdk_cursor_unref(v->ibeam);
+    }
+    g_free(v);
 }

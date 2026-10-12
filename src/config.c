@@ -71,6 +71,7 @@ KsConfig *ks_config_load(void)
 
     c->modules_dirs = g_new0(char *, 1);
     c->module_files = g_new0(char *, 1);
+    c->parallel = g_new0(char *, 1);
     c->book = 1;
     c->chapter = 1;
     c->font = g_strdup(KS_DEFAULT_FONT);
@@ -84,6 +85,8 @@ KsConfig *ks_config_load(void)
         get_list(kf, "modules_dirs", &c->modules_dirs);
         get_list(kf, "module_files", &c->module_files);
         get_str(kf, "module", &c->module);
+        get_list(kf, "parallel", &c->parallel);
+        get_bool(kf, "interleave", &c->interleave);
         get_int(kf, "book", &c->book);
         get_int(kf, "chapter", &c->chapter);
         get_int(kf, "verse", &c->verse);
@@ -114,6 +117,9 @@ void ks_config_save(const KsConfig *c)
     g_key_file_set_string_list(kf, GROUP, "module_files", (const char *const *)c->module_files,
                                g_strv_length(c->module_files));
     g_key_file_set_string(kf, GROUP, "module", c->module ? c->module : "");
+    g_key_file_set_string_list(kf, GROUP, "parallel", (const char *const *)c->parallel,
+                               g_strv_length(c->parallel));
+    g_key_file_set_boolean(kf, GROUP, "interleave", c->interleave);
     g_key_file_set_integer(kf, GROUP, "book", c->book);
     g_key_file_set_integer(kf, GROUP, "chapter", c->chapter);
     g_key_file_set_integer(kf, GROUP, "verse", c->verse);
@@ -141,6 +147,7 @@ void ks_config_free(KsConfig *c)
         return;
     g_strfreev(c->modules_dirs);
     g_strfreev(c->module_files);
+    g_strfreev(c->parallel);
     g_free(c->module);
     g_free(c->font);
     g_free(c->book_names);

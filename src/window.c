@@ -1,6 +1,7 @@
 /* window.c - kisword's main window (see window.h): module/book/chapter
- * selectors, the "go to" entry, menus carrying every shortcut, and
- * back/forward history. */
+ * selectors, the "go to" entry, menus carrying every shortcut,
+ * back/forward history, and parallel Bibles -- interleaved in the main
+ * view, or in columns of their own that scroll together. */
 #include "window.h"
 
 #include "books.h"
@@ -34,10 +35,15 @@ typedef struct {
     KsModule *mod;
     KsView *view;
     KsSearchPane *search;
+    GPtrArray *par;       /* parallel modules (KsModule *, not owned), open */
+    GPtrArray *par_views; /* KsView * per parallel, in columns mode */
+    GPtrArray *par_cols;  /* their column widgets */
+    GtkWidget *columns, *main_head;
+    gboolean syncing;     /* scrolling the columns from code */
     PangoFontDescription *font;
 
     GtkWidget *win, *mod_combo, *book_combo, *chap_spin, *entry, *status;
-    GtkWidget *back_btn, *fwd_btn, *back_item, *fwd_item, *info_item, *search_item;
+    GtkWidget *back_btn, *fwd_btn, *back_item, *fwd_item, *info_item, *search_item, *par_item;
     GtkListStore *mod_store, *book_store;
     GtkCheckMenuItem *chk_strong, *chk_notes, *chk_red, *chk_para;
     guint status_ctx;
@@ -168,15 +174,21 @@ static void sync_widgets(KsWin *w)
     gtk_widget_set_sensitive(w->fwd_item, w->fwd->len > 0);
     gtk_widget_set_sensitive(w->info_item, w->mod != NULL);
     gtk_widget_set_sensitive(w->search_item, w->mod != NULL);
+    gtk_widget_set_sensitive(w->par_item, w->mod != NULL);
 
     if (w->mod) {
         ref = g_strdup_printf("%s %d", ks_book_name(w->book), w->chapter);
         status(w, "%s — %s", ref, w->mod->title);
         {
-            char *title = g_strdup_printf("%s (%s) — kisword", ref, ks_module_label(w->mod));
+            GString *labels = g_string_new(ks_module_label(w->mod));
+            char *title;
 
+            for (guint i = 0; i < w->par->len; i++)
+                g_string_append_printf(labels, " + %s", ks_module_label(g_ptr_array_index(w->par, i)));
+            title = g_strdup_printf("%s (%s) — kisword", ref, labels->str);
             gtk_window_set_title(GTK_WINDOW(w->win), title);
             g_free(title);
+            g_string_free(labels, TRUE);
         }
         g_free(ref);
     }
@@ -220,7 +232,19 @@ static void navigate(KsWin *w, int book, int chapter, int scroll_verse, int hl_f
     w->at_result = FALSE;
     w->book = book;
     w->chapter = chapter;
-    ks_view_show(w->view, m, book, chapter, scroll_verse, hl_from, hl_to);
+    {
+        KsModule *mods[KS_VIEW_MAX_MODS] = { m };
+        int n = 1;
+
+        for (guint i = 0; w->cfg->interleave && i < w->par->len && n < KS_VIEW_MAX_MODS; i++)
+            mods[n++] = g_ptr_array_index(w->par, i);
+        w->syncing = TRUE;
+        ks_view_show(w->view, mods, n, book, chapter, scroll_verse, hl_from, hl_to);
+        for (guint i = 0; i < w->par_views->len; i++)
+            ks_view_show(g_ptr_array_index(w->par_views, i), (KsModule **)&g_ptr_array_index(w->par, i), 1, book,
+                         chapter, scroll_verse, hl_from, hl_to);
+        w->syncing = FALSE;
+    }
     ks_search_pane_set_book(w->search, book);
     sync_widgets(w);
 }
@@ -257,6 +281,265 @@ static void hist_go(KsWin *w, GArray *from, GArray *to)
     navigate(w, p.book, p.chapter, p.verse, 0, 0, FALSE);
 }
 
+/* ---- parallel Bibles ------------------------------------------------------ */
+
+static void parallels_changed(KsWin *w, gboolean show);
+
+/* Columns scroll together: the verse at the top of the one scrolled, and
+ * how far into it, goes to the others. */
+static void on_scrolled(GtkAdjustment *adj, KsWin *w)
+{
+    KsView *src = NULL;
+    int verse;
+    double frac;
+
+    if (w->syncing || !w->par_views->len)
+        return;
+    if (ks_view_vadjustment(w->view) == adj)
+        src = w->view;
+    for (guint i = 0; !src && i < w->par_views->len; i++)
+        if (ks_view_vadjustment(g_ptr_array_index(w->par_views, i)) == adj)
+            src = g_ptr_array_index(w->par_views, i);
+    if (!src || !ks_view_get_anchor(src, &verse, &frac))
+        return;
+    w->syncing = TRUE;
+    if (src != w->view)
+        ks_view_set_anchor(w->view, verse, frac);
+    for (guint i = 0; i < w->par_views->len; i++)
+        if (g_ptr_array_index(w->par_views, i) != src)
+            ks_view_set_anchor(g_ptr_array_index(w->par_views, i), verse, frac);
+    w->syncing = FALSE;
+}
+
+static void remove_parallel(KsWin *w, KsModule *m)
+{
+    if (g_ptr_array_remove(w->par, m)) {
+        ks_module_close(m);
+        parallels_changed(w, TRUE);
+    }
+}
+
+static void on_column_close(GtkWidget *b, KsWin *w)
+{
+    remove_parallel(w, g_object_get_data(G_OBJECT(b), "module"));
+}
+
+static GtkWidget *column_head(KsModule *m, KsWin *w)
+{
+    GtkWidget *box = gtk_hbox_new(FALSE, 2), *label = gtk_label_new(NULL), *b;
+    char *markup = g_markup_printf_escaped("<b>%s</b>", ks_module_label(m));
+
+    gtk_label_set_markup(GTK_LABEL(label), markup);
+    gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
+    gtk_widget_set_tooltip_text(label, m->title);
+    gtk_box_pack_start(GTK_BOX(box), label, TRUE, TRUE, 0);
+    if (w) {
+        b = gtk_button_new();
+        gtk_button_set_image(GTK_BUTTON(b), gtk_image_new_from_stock(GTK_STOCK_CLOSE, GTK_ICON_SIZE_MENU));
+        gtk_button_set_relief(GTK_BUTTON(b), GTK_RELIEF_NONE);
+        gtk_widget_set_tooltip_text(b, _("Close this parallel Bible"));
+        g_object_set_data(G_OBJECT(b), "module", m);
+        g_signal_connect(b, "clicked", G_CALLBACK(on_column_close), w);
+        gtk_box_pack_end(GTK_BOX(box), b, FALSE, FALSE, 0);
+    }
+    g_free(markup);
+    return box;
+}
+
+static void set_main_head(KsWin *w, gboolean show)
+{
+    GtkWidget *parent = gtk_widget_get_parent(ks_view_widget(w->view));
+    GtkWidget *head;
+
+    if (w->main_head) {
+        gtk_widget_destroy(w->main_head);
+        w->main_head = NULL;
+    }
+    if (!show || !w->mod)
+        return;
+    head = column_head(w->mod, NULL);
+    gtk_widget_set_size_request(head, -1, 24);
+    gtk_box_pack_start(GTK_BOX(parent), head, FALSE, FALSE, 0);
+    gtk_box_reorder_child(GTK_BOX(parent), head, 0);
+    gtk_widget_show_all(head);
+    w->main_head = head;
+}
+
+/* The columns for w->par (columns mode) and the config; show: the chapter
+ * again. */
+static void parallels_changed(KsWin *w, gboolean show)
+{
+    gboolean columns = !w->cfg->interleave && w->par->len;
+    char **paths;
+
+    for (guint i = 0; i < w->par_views->len; i++)
+        ks_view_free(g_ptr_array_index(w->par_views, i));
+    for (guint i = 0; i < w->par_cols->len; i++)
+        gtk_widget_destroy(g_ptr_array_index(w->par_cols, i));
+    g_ptr_array_set_size(w->par_views, 0);
+    g_ptr_array_set_size(w->par_cols, 0);
+
+    for (guint i = 0; columns && i < w->par->len; i++) {
+        KsModule *m = g_ptr_array_index(w->par, i);
+        KsViewOptions opt = { w->cfg->show_strong, w->cfg->show_notes, w->cfg->red_letters, w->cfg->paragraphs };
+        KsView *v = ks_view_new(&opt);
+        GtkWidget *col = gtk_vbox_new(FALSE, 0), *head = column_head(m, w);
+
+        gtk_widget_set_size_request(head, -1, 24);
+        ks_view_set_font(v, w->font);
+        gtk_box_pack_start(GTK_BOX(col), head, FALSE, FALSE, 0);
+        gtk_box_pack_start(GTK_BOX(col), ks_view_widget(v), TRUE, TRUE, 0);
+        gtk_box_pack_start(GTK_BOX(w->columns), col, TRUE, TRUE, 0);
+        gtk_widget_show_all(col);
+        g_signal_connect(ks_view_vadjustment(v), "value-changed", G_CALLBACK(on_scrolled), w);
+        g_ptr_array_add(w->par_views, v);
+        g_ptr_array_add(w->par_cols, col);
+    }
+    set_main_head(w, columns);
+
+    paths = g_new0(char *, w->par->len + 1);
+    for (guint i = 0; i < w->par->len; i++)
+        paths[i] = g_strdup(((KsModule *)g_ptr_array_index(w->par, i))->real);
+    g_strfreev(w->cfg->parallel);
+    w->cfg->parallel = paths;
+
+    if (show && w->mod && w->book)
+        navigate(w, w->book, w->chapter, ks_view_top_verse(w->view), 0, 0, FALSE);
+}
+
+/* Opens m as a parallel; FALSE (with a dialog) if it can't be. */
+static gboolean add_parallel(KsWin *w, KsModule *m, gboolean quiet)
+{
+    GError *err = NULL;
+
+    if (m == w->mod || !m->supported || g_ptr_array_find(w->par, m, NULL) || w->par->len >= KS_VIEW_MAX_MODS - 1)
+        return FALSE;
+    if (!ks_module_open(m, &err)) {
+        if (!quiet)
+            error_dialog(w, _("Could not open the module"), err->message);
+        g_error_free(err);
+        return FALSE;
+    }
+    g_ptr_array_add(w->par, m);
+    return TRUE;
+}
+
+enum { PAR_COL_ON, PAR_COL_LABEL, PAR_COL_INDEX, PAR_N_COLS };
+
+static void on_par_toggled(GtkCellRendererToggle *cell, char *path, GtkListStore *store)
+{
+    GtkTreeIter it;
+    gboolean on;
+
+    (void)cell;
+    if (!gtk_tree_model_get_iter_from_string(GTK_TREE_MODEL(store), &it, path))
+        return;
+    gtk_tree_model_get(GTK_TREE_MODEL(store), &it, PAR_COL_ON, &on, -1);
+    gtk_list_store_set(store, &it, PAR_COL_ON, !on, -1);
+}
+
+/* View > Parallel Bibles: which ones, and columns or interleaved. */
+static void cmd_parallel(KsWin *w)
+{
+    GtkWidget *d, *box, *sw, *tree, *cols, *inter, *label;
+    GtkListStore *store;
+    GtkCellRenderer *cell;
+    GtkTreeIter it;
+    gboolean ok;
+
+    if (!w->mod)
+        return;
+    d = gtk_dialog_new_with_buttons(_("Parallel Bibles"), GTK_WINDOW(w->win), GTK_DIALOG_MODAL |
+                                    GTK_DIALOG_DESTROY_WITH_PARENT, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+                                    GTK_STOCK_OK, GTK_RESPONSE_OK, NULL);
+    gtk_dialog_set_default_response(GTK_DIALOG(d), GTK_RESPONSE_OK);
+    gtk_window_set_default_size(GTK_WINDOW(d), 460, 480);
+    box = gtk_vbox_new(FALSE, 6);
+    gtk_container_set_border_width(GTK_CONTAINER(box), 8);
+
+    label = gtk_label_new(NULL);
+    {
+        char *text = g_strdup_printf(_("Show these Bibles along with %s (up to %d):"), ks_module_label(w->mod),
+                                     KS_VIEW_MAX_MODS - 1);
+
+        gtk_label_set_text(GTK_LABEL(label), text);
+        g_free(text);
+    }
+    gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
+    gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
+    gtk_box_pack_start(GTK_BOX(box), label, FALSE, FALSE, 0);
+
+    /* The ones shown now first, in their order, then the rest. */
+    store = gtk_list_store_new(PAR_N_COLS, G_TYPE_BOOLEAN, G_TYPE_STRING, G_TYPE_INT);
+    for (guint k = 0; k < w->par->len + w->mods->len; k++) {
+        KsModule *m = k < w->par->len ? g_ptr_array_index(w->par, k) : g_ptr_array_index(w->mods, k - w->par->len);
+        int i = module_index(w, m);
+        char *markup;
+
+        if (m == w->mod || !m->supported || (k >= w->par->len && g_ptr_array_find(w->par, m, NULL)))
+            continue;
+        markup = m->abbrev && strcmp(m->abbrev, m->title) != 0
+                     ? g_markup_printf_escaped("<b>%s</b> — %s", m->abbrev, m->title)
+                     : g_markup_printf_escaped("<b>%s</b>", m->title);
+        gtk_list_store_insert_with_values(store, &it, -1, PAR_COL_ON, k < w->par->len, PAR_COL_LABEL, markup,
+                                          PAR_COL_INDEX, i, -1);
+        g_free(markup);
+    }
+    tree = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
+    gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(tree), FALSE);
+    cell = gtk_cell_renderer_toggle_new();
+    g_signal_connect(cell, "toggled", G_CALLBACK(on_par_toggled), store);
+    gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(tree), -1, NULL, cell, "active", PAR_COL_ON, NULL);
+    cell = gtk_cell_renderer_text_new();
+    g_object_set(cell, "ellipsize", PANGO_ELLIPSIZE_END, NULL);
+    gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(tree), -1, NULL, cell, "markup", PAR_COL_LABEL,
+                                                NULL);
+    sw = gtk_scrolled_window_new(NULL, NULL);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(sw), GTK_SHADOW_IN);
+    gtk_container_add(GTK_CONTAINER(sw), tree);
+    gtk_box_pack_start(GTK_BOX(box), sw, TRUE, TRUE, 0);
+
+    cols = gtk_radio_button_new_with_mnemonic(NULL, _("Side by side, in _columns"));
+    inter = gtk_radio_button_new_with_mnemonic_from_widget(GTK_RADIO_BUTTON(cols),
+                                                           _("_Interleaved, verse by verse"));
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w->cfg->interleave ? inter : cols), TRUE);
+    gtk_box_pack_start(GTK_BOX(box), cols, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(box), inter, FALSE, FALSE, 0);
+
+    gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(d))), box, TRUE, TRUE, 0);
+    gtk_widget_show_all(box);
+
+    if (gtk_dialog_run(GTK_DIALOG(d)) == GTK_RESPONSE_OK) {
+        GPtrArray *old = g_ptr_array_new();
+
+        for (guint i = 0; i < w->par->len; i++)
+            g_ptr_array_add(old, g_ptr_array_index(w->par, i));
+        g_ptr_array_set_size(w->par, 0);
+        for (ok = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &it); ok;
+             ok = gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &it)) {
+            gboolean on;
+            int idx;
+
+            gtk_tree_model_get(GTK_TREE_MODEL(store), &it, PAR_COL_ON, &on, PAR_COL_INDEX, &idx, -1);
+            if (on && w->par->len >= KS_VIEW_MAX_MODS - 1) {
+                status(w, _("At most %d parallel Bibles; the others were left out."), KS_VIEW_MAX_MODS - 1);
+                break;
+            }
+            if (on)
+                add_parallel(w, g_ptr_array_index(w->mods, idx), FALSE);
+        }
+        for (guint i = 0; i < old->len; i++)
+            if (!g_ptr_array_find(w->par, g_ptr_array_index(old, i), NULL))
+                ks_module_close(g_ptr_array_index(old, i));
+        g_ptr_array_free(old, TRUE);
+        w->cfg->interleave = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(inter));
+        parallels_changed(w, TRUE);
+    }
+    g_object_unref(store);
+    gtk_widget_destroy(d);
+}
+
 /* show: render right away (FALSE only at startup, where the first
  * position is decided afterwards and rendered once). */
 static gboolean switch_module(KsWin *w, KsModule *m, gboolean show)
@@ -278,7 +561,10 @@ static gboolean switch_module(KsWin *w, KsModule *m, gboolean show)
     }
     top = old ? ks_view_top_verse(w->view) : 0;
     w->mod = m;
-    if (old)
+    g_ptr_array_remove(w->par, m); /* a parallel becoming the main one */
+    if (w->par->len || w->main_head)
+        parallels_changed(w, FALSE); /* also relabels the main column */
+    if (old && !g_ptr_array_find(w->par, old, NULL))
         ks_module_close(old);
     fill_books(w);
     ks_search_pane_set_module(w->search, m);
@@ -363,7 +649,11 @@ static void apply_options(KsWin *w)
     w->cfg->show_notes = o.show_notes;
     w->cfg->red_letters = o.red_letters;
     w->cfg->paragraphs = o.paragraphs;
+    w->syncing = TRUE;
     ks_view_set_options(w->view, &o);
+    for (guint i = 0; i < w->par_views->len; i++)
+        ks_view_set_options(g_ptr_array_index(w->par_views, i), &o);
+    w->syncing = FALSE;
 }
 
 static void set_font(KsWin *w, PangoFontDescription *d)
@@ -372,6 +662,8 @@ static void set_font(KsWin *w, PangoFontDescription *d)
         pango_font_description_free(w->font);
     w->font = d;
     ks_view_set_font(w->view, d);
+    for (guint i = 0; i < w->par_views->len; i++)
+        ks_view_set_font(g_ptr_array_index(w->par_views, i), d);
     g_free(w->cfg->font);
     w->cfg->font = pango_font_description_to_string(d);
 }
@@ -728,6 +1020,8 @@ static GtkWidget *build_menus(KsWin *w, GtkAccelGroup *ag)
     w->chk_red = check_item(m, ag, _("Words of Jesus in _red"), 0, w->cfg->red_letters, w);
     w->chk_para = check_item(m, ag, _("_Paragraph layout"), 0, w->cfg->paragraphs, w);
     separator(m);
+    w->par_item = menu_item(m, ag, _("Pa_rallel Bibles…"), GDK_KEY_F8, 0, cmd_parallel, w);
+    separator(m);
     mi = menu_item(m, ag, _("Zoom _in"), GDK_KEY_plus, GDK_CONTROL_MASK, cmd_zoom_in, w);
     gtk_widget_add_accelerator(mi, "activate", ag, GDK_KEY_equal, GDK_CONTROL_MASK, 0);
     gtk_widget_add_accelerator(mi, "activate", ag, GDK_KEY_KP_Add, GDK_CONTROL_MASK, 0);
@@ -848,6 +1142,9 @@ void ks_window_run(KsConfig *cfg, char **files, const char *ref)
     KsModule *m;
 
     w->cfg = cfg;
+    w->par = g_ptr_array_new();
+    w->par_views = g_ptr_array_new();
+    w->par_cols = g_ptr_array_new();
     w->back = g_array_new(FALSE, FALSE, sizeof(KsPos));
     w->fwd = g_array_new(FALSE, FALSE, sizeof(KsPos));
     w->book = cfg->book;
@@ -881,8 +1178,17 @@ void ks_window_run(KsConfig *cfg, char **files, const char *ref)
     w->search = ks_search_pane_new(search_go, w);
     g_signal_connect_swapped(ks_search_pane_widget(w->search), "hide", G_CALLBACK(on_search_hidden), w);
 
+    /* The main view in a column of its own, the parallels' columns after it. */
+    w->columns = gtk_hbox_new(TRUE, 2);
+    {
+        GtkWidget *col = gtk_vbox_new(FALSE, 0);
+
+        gtk_box_pack_start(GTK_BOX(col), ks_view_widget(w->view), TRUE, TRUE, 0);
+        gtk_box_pack_start(GTK_BOX(w->columns), col, TRUE, TRUE, 0);
+    }
+    g_signal_connect(ks_view_vadjustment(w->view), "value-changed", G_CALLBACK(on_scrolled), w);
     paned = gtk_hpaned_new();
-    gtk_paned_pack1(GTK_PANED(paned), ks_view_widget(w->view), TRUE, FALSE);
+    gtk_paned_pack1(GTK_PANED(paned), w->columns, TRUE, FALSE);
     gtk_paned_pack2(GTK_PANED(paned), ks_search_pane_widget(w->search), FALSE, FALSE);
     gtk_paned_set_position(GTK_PANED(paned), MAX(cfg->width - 330, 300));
 
@@ -898,6 +1204,13 @@ void ks_window_run(KsConfig *cfg, char **files, const char *ref)
     fill_modules(w);
     m = initial_module(w, files);
     if (m && switch_module(w, m, FALSE)) {
+        for (int i = 0; cfg->parallel[i]; i++) {
+            KsModule *p = find_module(w, cfg->parallel[i]);
+
+            if (p)
+                add_parallel(w, p, TRUE);
+        }
+        parallels_changed(w, FALSE); /* the chapter comes below */
         /* The status bar keeps the error if the reference is bad. */
         if (!(ref && *ref && go_to_ref(w, ref)))
             navigate(w, w->book, w->chapter, cfg->verse, 0, 0, FALSE);
