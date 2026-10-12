@@ -73,7 +73,7 @@ respectively). Tags `v1.x.x` and later are stable releases; `v0.x.x` and
 tags with a suffix (`v1.2.0-beta`) are marked as pre-releases.
 
 ```sh
-sudo apt install ./kisword_0.1.0-1_<distro>_amd64.deb
+sudo apt install ./kisword_0.2.0-1_<distro>_amd64.deb
 ```
 
 ## Building
