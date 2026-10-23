@@ -1,0 +1,663 @@
+# Esperanto translations for kisword package.
+# Copyright (C) 2026 THE kisword'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the kisword package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: kisword 0.3.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-23 19:29-0300\n"
+"PO-Revision-Date: 2026-10-23 20:00-0300\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: eo\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/infodialog.c:56
+msgid "Abbreviation"
+msgstr "Mallongigo"
+
+#: src/infodialog.c:56
+msgid "Description"
+msgstr "Priskribo"
+
+#: src/infodialog.c:57
+msgid "Language"
+msgstr "Lingvo"
+
+#: src/infodialog.c:57
+msgid "Version"
+msgstr "Versio"
+
+#: src/infodialog.c:58
+msgid "Published"
+msgstr "Publikigo"
+
+#: src/infodialog.c:58
+msgid "Version date"
+msgstr "Dato de la versio"
+
+#: src/infodialog.c:59
+msgid "Author"
+msgstr "Aŭtoro"
+
+#: src/infodialog.c:59
+msgid "Publisher"
+msgstr "Eldonisto"
+
+#: src/infodialog.c:60
+msgid "Creator"
+msgstr "Kreinto"
+
+#: src/infodialog.c:60
+msgid "Source"
+msgstr "Fonto"
+
+#: src/infodialog.c:68 src/studypane.c:927
+msgid "About the module"
+msgstr "Pri la modulo"
+
+#: src/infodialog.c:105
+msgid "Contents"
+msgstr "Enhavo"
+
+#: src/infodialog.c:106
+msgid "File"
+msgstr "Dosiero"
+
+#: src/infodialog.c:115
+msgid "Editorial comments"
+msgstr "Redaktaj komentoj"
+
+#: src/main.c:82 src/main.c:122
+msgid "Reference not recognized"
+msgstr "Referenco ne rekonita"
+
+#: src/main.c:102
+msgid "Not found"
+msgstr "Ne trovita"
+
+#: src/main.c:116
+msgid "--dump needs exactly one module file"
+msgstr "--dump bezonas ĝuste unu modul-dosieron"
+
+#: src/main.c:167
+msgid "--search needs exactly one module file"
+msgstr "--search bezonas ĝuste unu modul-dosieron"
+
+#: src/main.c:429
+msgid "Open at this reference (e.g. \"Jo 3:16\")"
+msgstr "Malfermi ĉe ĉi tiu referenco (ekz. \"Jo 3:16\")"
+
+#: src/main.c:429 src/main.c:431
+msgid "REF"
+msgstr "REF"
+
+#: src/main.c:430
+msgid ""
+"Print REF from the given module as plain text and exit (a word or entry for "
+"dictionaries and books)"
+msgstr ""
+"Printi REF el la donita modulo kiel simplan tekston kaj eliri (vorton aŭ "
+"artikolon por vortaroj kaj libroj)"
+
+#: src/main.c:432
+msgid "Parse every verse or entry of the given modules and report problems"
+msgstr ""
+"Analizi ĉiun verson aŭ artikolon de la donitaj moduloj kaj raporti problemojn"
+
+#: src/main.c:435
+msgid ""
+"Print the verses of the given module with all these words (or a Strong's "
+"number like H430) and exit"
+msgstr ""
+"Printi la versojn de la donita modulo kun ĉiuj ĉi tiuj vortoj (aŭ Strong-"
+"numero kiel H430) kaj eliri"
+
+#: src/main.c:436
+msgid "WORDS"
+msgstr "VORTOJ"
+
+#: src/main.c:437
+msgid "With --search: the words together, in order"
+msgstr "Kun --search: la vortoj kune, laŭorde"
+
+#: src/main.c:438
+msgid "With --search: match whole words only"
+msgstr "Kun --search: kongrui nur kun tutaj vortoj"
+
+#: src/main.c:439
+msgid "Show the version and exit"
+msgstr "Montri la version kaj eliri"
+
+#: src/main.c:440
+msgid "[MODULE.mybible…]"
+msgstr "[MODULO.mybible…]"
+
+#: src/module.c:146
+#, c-format
+msgid "%s is not a MySword Bible module (%s)"
+msgstr "%s ne estas Biblia modulo de MySword (%s)"
+
+#: src/module.c:181 src/res.c:291
+msgid ""
+"This is an encrypted MySword module. Encrypted modules are not supported."
+msgstr ""
+"Ĉi tio estas ĉifrita modulo de MySword. Ĉifritaj moduloj ne estas subtenataj."
+
+#: src/module.c:184
+msgid "This module is compressed in a format kisword does not read yet."
+msgstr ""
+"Ĉi tiu modulo estas densigita en formato, kiun kisword ankoraŭ ne legas."
+
+#: src/module.c:187
+msgid ""
+"The verse text in this module is binary (probably encrypted or compressed)."
+msgstr ""
+"La verstekston de ĉi tiu modulo estas duuma (verŝajne ĉifrita aŭ densigita)."
+
+#: src/module.c:363
+#, c-format
+msgid "%s has no verses."
+msgstr "%s ne havas versojn."
+
+#: src/render.c:331
+msgid "No dictionary installed has this number."
+msgstr "Neniu instalita vortaro havas ĉi tiun numeron."
+
+#: src/render.c:502
+msgid "This module does not have this chapter."
+msgstr "Ĉi tiu modulo ne havas ĉi tiun ĉapitron."
+
+#: src/res.c:215
+#, c-format
+msgid "%s is not a MySword commentary (%s)"
+msgstr "%s ne estas komentario de MySword (%s)"
+
+#: src/res.c:216
+#, c-format
+msgid "%s is not a MySword dictionary (%s)"
+msgstr "%s ne estas vortaro de MySword (%s)"
+
+#: src/res.c:217
+#, c-format
+msgid "%s is not a MySword book (%s)"
+msgstr "%s ne estas libro de MySword (%s)"
+
+#: src/res.c:218
+#, c-format
+msgid "%s is not a MySword journal (%s)"
+msgstr "%s ne estas taglibro de MySword (%s)"
+
+#: src/res.c:227
+#, c-format
+msgid "%s is not a MySword module"
+msgstr "%s ne estas modulo de MySword"
+
+#: src/res.c:268
+msgid "no table of entries"
+msgstr "neniu tabelo de artikoloj"
+
+#: src/res.c:294
+msgid "The text in this module is binary (probably encrypted or compressed)."
+msgstr ""
+"La teksto de ĉi tiu modulo estas duuma (verŝajne ĉifrita aŭ densigita)."
+
+#: src/searchpane.c:88
+#, c-format
+msgid "%u verses (showing the first %u)"
+msgstr "%u versoj (montriĝas la unuaj %u)"
+
+#: src/searchpane.c:90
+#, c-format
+msgid "%u verse"
+msgid_plural "%u verses"
+msgstr[0] "%u verso"
+msgstr[1] "%u versoj"
+
+#: src/searchpane.c:143
+msgid "Preparing the search…"
+msgstr "Pretigado de la serĉo…"
+
+#: src/searchpane.c:256
+msgid "All words"
+msgstr "Ĉiuj vortoj"
+
+#: src/searchpane.c:256
+msgid "Any word"
+msgstr "Iu ajn vorto"
+
+#: src/searchpane.c:256
+msgid "Exact phrase"
+msgstr "Preciza frazo"
+
+#: src/searchpane.c:257
+msgid "New Testament"
+msgstr "Nova Testamento"
+
+#: src/searchpane.c:257
+msgid "Old Testament"
+msgstr "Malnova Testamento"
+
+#: src/searchpane.c:257
+msgid "Whole Bible"
+msgstr "Tuta Biblio"
+
+#: src/searchpane.c:258
+msgid "Current book"
+msgstr "Nuna libro"
+
+#: src/searchpane.c:273
+msgid "Words to search for, or a Strong's number such as H430 or G26"
+msgstr "Serĉendaj vortoj, aŭ Strong-numero kiel H430 aŭ G26"
+
+#: src/searchpane.c:278
+msgid "Search"
+msgstr "Serĉi"
+
+#: src/searchpane.c:284
+msgid "Close the search (Esc)"
+msgstr "Fermi la serĉon (Esc)"
+
+#: src/searchpane.c:293
+msgid "_Whole words"
+msgstr "_Tutaj vortoj"
+
+#: src/studypane.c:369
+#, c-format
+msgid "%s is not in %s."
+msgstr "%s ne estas en %s."
+
+#: src/studypane.c:509
+msgid "This module has no entries."
+msgstr "Ĉi tiu modulo ne havas artikolojn."
+
+#: src/studypane.c:625
+#, c-format
+msgid "%s has no comment on %s."
+msgstr "%s ne havas komentarion pri %s."
+
+#: src/studypane.c:666
+#, c-format
+msgid "Picture not found: %s"
+msgstr "Bildo ne trovita: %s"
+
+#: src/studypane.c:682
+#, c-format
+msgid "Link not supported: %s"
+msgstr "Ligilo ne subtenata: %s"
+
+#: src/studypane.c:693 src/studypane.c:697 src/studypane.c:701
+#, c-format
+msgid "No dictionary has %s."
+msgstr "Neniu vortaro havas %s."
+
+#: src/studypane.c:718
+#, c-format
+msgid "Entry not found: %s"
+msgstr "Artikolo ne trovita: %s"
+
+#: src/studypane.c:773
+msgid "This dictionary does not have this word."
+msgstr "Ĉi tiu vortaro ne havas ĉi tiun vorton."
+
+#: src/studypane.c:774 src/studypane.c:1024
+msgid "Type a word, or pick one from the list."
+msgstr "Tajpu vorton, aŭ elektu unu el la listo."
+
+#: src/studypane.c:850 src/window.c:1125
+msgid "Strong's numbers"
+msgstr "Strong-numeroj"
+
+#: src/studypane.c:850
+msgid "morphology codes"
+msgstr "morfologiaj kodoj"
+
+#: src/studypane.c:895 src/window.c:1295
+msgid "Book"
+msgstr "Libro"
+
+#: src/studypane.c:895 src/studypane.c:1080
+msgid "Commentary"
+msgstr "Komentario"
+
+#: src/studypane.c:895 src/studypane.c:1080
+msgid "Dictionary"
+msgstr "Vortaro"
+
+#: src/studypane.c:895
+msgid "Journal"
+msgstr "Taglibro"
+
+#: src/studypane.c:918
+msgid "Previous entry"
+msgstr "Antaŭa artikolo"
+
+#: src/studypane.c:919
+msgid "Next entry"
+msgstr "Sekva artikolo"
+
+#: src/studypane.c:924
+msgid "Back"
+msgstr "Reen"
+
+#: src/studypane.c:933
+msgid "A word or a Strong's number (H430, G26); Enter shows it"
+msgstr "Vorto aŭ Strong-numero (H430, G26); Enter montras ĝin"
+
+#: src/studypane.c:991
+#, c-format
+msgid ""
+"No commentary found.\n"
+"\n"
+"Copy *.cmt.mybible files to %s, or use File → Open module…"
+msgstr ""
+"Neniu komentario trovita.\n"
+"\n"
+"Kopiu dosierojn *.cmt.mybible al %s, aŭ uzu Dosiero → Malfermi modulon…"
+
+#: src/studypane.c:992
+#, c-format
+msgid ""
+"No dictionary found.\n"
+"\n"
+"Copy *.dct.mybible files to %s, or use File → Open module…"
+msgstr ""
+"Neniu vortaro trovita.\n"
+"\n"
+"Kopiu dosierojn *.dct.mybible al %s, aŭ uzu Dosiero → Malfermi modulon…"
+
+#: src/studypane.c:993
+#, c-format
+msgid ""
+"No book found.\n"
+"\n"
+"Copy *.bok.mybible files to %s, or use File → Open module…"
+msgstr ""
+"Neniu libro trovita.\n"
+"\n"
+"Kopiu dosierojn *.bok.mybible al %s, aŭ uzu Dosiero → Malfermi modulon…"
+
+#: src/studypane.c:994
+#, c-format
+msgid ""
+"No journal found.\n"
+"\n"
+"Copy *.jor.mybible files to %s, or use File → Open module…"
+msgstr ""
+"Neniu taglibro trovita.\n"
+"\n"
+"Kopiu dosierojn *.jor.mybible al %s, aŭ uzu Dosiero → Malfermi modulon…"
+
+#: src/studypane.c:1080
+msgid "Books"
+msgstr "Libroj"
+
+#: src/studypane.c:1080
+msgid "Journals"
+msgstr "Taglibroj"
+
+#: src/window.c:340
+msgid "This module has no options."
+msgstr "Ĉi tiu modulo ne havas opciojn."
+
+#: src/window.c:455 src/window.c:838
+#, c-format
+msgid "%s is not in this module."
+msgstr "%s ne estas en ĉi tiu modulo."
+
+#: src/window.c:522
+msgid "Close this parallel Bible"
+msgstr "Fermi ĉi tiun paralelan Biblion"
+
+#: src/window.c:607 src/window.c:768 src/window.c:968 src/window.c:1026
+msgid "Could not open the module"
+msgstr "Ne eblis malfermi la modulon"
+
+#: src/window.c:641
+msgid "Parallel Bibles"
+msgstr "Paralelaj Biblioj"
+
+#: src/window.c:651
+#, c-format
+msgid "Show these Bibles along with %s (up to %d):"
+msgstr "Montri ĉi tiujn Bibliojn kune kun %s (ĝis %d):"
+
+#: src/window.c:692
+msgid "Side by side, in _columns"
+msgstr "Flanko ĉe flanko, en _kolumnoj"
+
+#: src/window.c:694
+msgid "_Interleaved, verse by verse"
+msgstr "_Intermiksite, verso post verso"
+
+#: src/window.c:715
+#, c-format
+msgid "At most %d parallel Bibles; the others were left out."
+msgstr "Maksimume %d paralelaj Biblioj; la aliaj estis preterlasitaj."
+
+#: src/window.c:833
+#, c-format
+msgid "Reference not recognized: %s"
+msgstr "Referenco ne rekonita: %s"
+
+#: src/window.c:999
+msgid "Open MySword module"
+msgstr "Malfermi modulon de MySword"
+
+#: src/window.c:1003
+msgid "MySword modules (*.mybible)"
+msgstr "Moduloj de MySword (*.mybible)"
+
+#: src/window.c:1004
+msgid "Bibles (*.bbl.mybible)"
+msgstr "Biblioj (*.bbl.mybible)"
+
+#: src/window.c:1005
+msgid "Commentaries (*.cmt.mybible)"
+msgstr "Komentarioj (*.cmt.mybible)"
+
+#: src/window.c:1006
+msgid "Dictionaries (*.dct.mybible)"
+msgstr "Vortaroj (*.dct.mybible)"
+
+#: src/window.c:1007
+msgid "Books and journals (*.bok.mybible, *.jor.mybible)"
+msgstr "Libroj kaj taglibroj (*.bok.mybible, *.jor.mybible)"
+
+#: src/window.c:1039
+msgid "Text font"
+msgstr "Tiparo de la teksto"
+
+#: src/window.c:1103
+msgid "A light Bible reader for MySword modules."
+msgstr "Malpeza Biblio-legilo por moduloj de MySword."
+
+#: src/window.c:1123
+#, c-format
+msgid "%d book"
+msgid_plural "%d books"
+msgstr[0] "%d libro"
+msgstr[1] "%d libroj"
+
+#: src/window.c:1127
+msgid "right to left"
+msgstr "de dekstro maldekstren"
+
+#: src/window.c:1129
+msgid "verse rules"
+msgstr "versaj reguloj"
+
+#: src/window.c:1181
+msgid "_File"
+msgstr "_Dosiero"
+
+#: src/window.c:1182
+msgid "_Open module…"
+msgstr "_Malfermi modulon…"
+
+#: src/window.c:1184
+msgid "_Quit"
+msgstr "_Eliri"
+
+#: src/window.c:1186
+msgid "_View"
+msgstr "_Vido"
+
+#: src/window.c:1187
+msgid "_Strong's numbers"
+msgstr "_Strong-numeroj"
+
+#: src/window.c:1188
+msgid "_Footnotes"
+msgstr "_Piednotoj"
+
+#: src/window.c:1189
+msgid "Words of Jesus in _red"
+msgstr "Vortoj de Jesuo _ruĝe"
+
+#: src/window.c:1190
+msgid "_Paragraph layout"
+msgstr "_Alineo-aranĝo"
+
+#: src/window.c:1191
+msgid "_Interlinear in columns"
+msgstr "_Interlinie en kolumnoj"
+
+#: src/window.c:1193
+msgid "Pa_rallel Bibles…"
+msgstr "Pa_ralelaj Biblioj…"
+
+#: src/window.c:1194
+msgid "Module _options"
+msgstr "_Opcioj de la modulo"
+
+#: src/window.c:1198
+msgid "Zoom _in"
+msgstr "_Pligrandigi"
+
+#: src/window.c:1201
+msgid "Zoom _out"
+msgstr "_Malpligrandigi"
+
+#: src/window.c:1203
+msgid "_Normal size"
+msgstr "_Norma grando"
+
+#: src/window.c:1204
+msgid "_Font…"
+msgstr "_Tiparo…"
+
+#: src/window.c:1206
+msgid "_Study"
+msgstr "_Studo"
+
+#: src/window.c:1207
+msgid "Study _panel"
+msgstr "_Studa panelo"
+
+#: src/window.c:1214
+msgid "_Commentary"
+msgstr "_Komentario"
+
+#: src/window.c:1215
+msgid "_Dictionary"
+msgstr "_Vortaro"
+
+#: src/window.c:1216
+msgid "_Books"
+msgstr "_Libroj"
+
+#: src/window.c:1217
+msgid "_Journals"
+msgstr "_Taglibroj"
+
+#: src/window.c:1219
+msgid "_Look up in the dictionary"
+msgstr "_Serĉi en la vortaro"
+
+#: src/window.c:1221
+msgid "_Go"
+msgstr "_Iri"
+
+#: src/window.c:1222
+msgid "_Back"
+msgstr "_Reen"
+
+#: src/window.c:1223
+msgid "_Forward"
+msgstr "_Antaŭen"
+
+#: src/window.c:1225
+msgid "_Previous chapter"
+msgstr "_Antaŭa ĉapitro"
+
+#: src/window.c:1226
+msgid "_Next chapter"
+msgstr "_Sekva ĉapitro"
+
+#: src/window.c:1228
+msgid "_Go to reference…"
+msgstr "_Iri al referenco…"
+
+#: src/window.c:1229
+msgid "_Search…"
+msgstr "_Serĉi…"
+
+#: src/window.c:1231
+msgid "_Help"
+msgstr "_Helpo"
+
+#: src/window.c:1232
+msgid "About the Bible _module…"
+msgstr "Pri la Biblia _modulo…"
+
+#: src/window.c:1233
+msgid "_About"
+msgstr "_Pri"
+
+#: src/window.c:1286
+msgid "Bible module"
+msgstr "Biblia modulo"
+
+#: src/window.c:1300
+msgid "Chapter"
+msgstr "Ĉapitro"
+
+#: src/window.c:1303
+msgid "Back (Alt+Left)"
+msgstr "Reen (Alt+Maldekstren)"
+
+#: src/window.c:1304
+msgid "Forward (Alt+Right)"
+msgstr "Antaŭen (Alt+Dekstren)"
+
+#: src/window.c:1306
+msgid "Parallel Bibles on/off (F8 to choose them)"
+msgstr "Ŝalti/malŝalti paralelajn Bibliojn (F8 por elekti ilin)"
+
+#: src/window.c:1308
+msgid "Show/hide the study panel"
+msgstr "Montri/kaŝi la studan panelon"
+
+#: src/window.c:1313
+msgid "Go to a reference, e.g. \"Jo 3:16\", \"1Co 13\" or \"gn 1\" (Ctrl+L)"
+msgstr "Iri al referenco, ekz. \"Jo 3:16\", \"1Co 13\" aŭ \"gn 1\" (Ctrl+L)"
+
+#: src/window.c:1325
+msgid "Go to:"
+msgstr "Iri al:"
+
+#: src/window.c:1454
+#, c-format
+msgid ""
+"No MySword Bible module found.\n"
+"\n"
+"Copy *.bbl.mybible files to %s, or use File → Open module…"
+msgstr ""
+"Neniu Biblia modulo de MySword trovita.\n"
+"\n"
+"Kopiu dosierojn *.bbl.mybible al %s, aŭ uzu Dosiero → Malfermi modulon…"

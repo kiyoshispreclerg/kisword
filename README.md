@@ -43,7 +43,8 @@ but a separate program; it may end up in a future `kidesktop-extras`.
 - Help → About the module shows the module's details and its description
   (the HTML in `Details.Comments`) as formatted text.
 - Right-to-left modules are laid out right-to-left.
-- Interface in English and Brazilian Portuguese; book names follow the locale.
+- Interface in English, Brazilian Portuguese, Esperanto and Japanese; book
+  names are in Portuguese or English, following the locale.
 
 - A study panel on the right (F4) with **commentaries** (`*.cmt.mybible`,
   following the verse shown or clicked), **dictionaries** (`*.dct.mybible`:

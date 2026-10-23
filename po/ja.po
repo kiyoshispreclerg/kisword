@@ -1,0 +1,667 @@
+# Japanese translations for kisword package.
+# Copyright (C) 2026 THE kisword'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the kisword package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: kisword 0.3.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-23 19:29-0300\n"
+"PO-Revision-Date: 2026-10-23 20:00-0300\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: src/infodialog.c:56
+msgid "Abbreviation"
+msgstr "略称"
+
+#: src/infodialog.c:56
+msgid "Description"
+msgstr "説明"
+
+#: src/infodialog.c:57
+msgid "Language"
+msgstr "言語"
+
+#: src/infodialog.c:57
+msgid "Version"
+msgstr "バージョン"
+
+#: src/infodialog.c:58
+msgid "Published"
+msgstr "出版"
+
+#: src/infodialog.c:58
+msgid "Version date"
+msgstr "バージョンの日付"
+
+#: src/infodialog.c:59
+msgid "Author"
+msgstr "著者"
+
+#: src/infodialog.c:59
+msgid "Publisher"
+msgstr "出版社"
+
+#: src/infodialog.c:60
+msgid "Creator"
+msgstr "作成者"
+
+#: src/infodialog.c:60
+msgid "Source"
+msgstr "出典"
+
+#: src/infodialog.c:68 src/studypane.c:927
+msgid "About the module"
+msgstr "モジュールについて"
+
+#: src/infodialog.c:105
+msgid "Contents"
+msgstr "内容"
+
+#: src/infodialog.c:106
+msgid "File"
+msgstr "ファイル"
+
+#: src/infodialog.c:115
+msgid "Editorial comments"
+msgstr "編集者のコメント"
+
+#: src/main.c:82 src/main.c:122
+msgid "Reference not recognized"
+msgstr "参照を認識できません"
+
+#: src/main.c:102
+msgid "Not found"
+msgstr "見つかりません"
+
+#: src/main.c:116
+msgid "--dump needs exactly one module file"
+msgstr "--dump にはモジュールファイルをちょうど1つ指定してください"
+
+#: src/main.c:167
+msgid "--search needs exactly one module file"
+msgstr "--search にはモジュールファイルをちょうど1つ指定してください"
+
+#: src/main.c:429
+msgid "Open at this reference (e.g. \"Jo 3:16\")"
+msgstr "この参照で開く(例: \"Jo 3:16\")"
+
+#: src/main.c:429 src/main.c:431
+msgid "REF"
+msgstr "参照"
+
+#: src/main.c:430
+msgid ""
+"Print REF from the given module as plain text and exit (a word or entry for "
+"dictionaries and books)"
+msgstr ""
+"指定したモジュールから参照をプレーンテキストで出力して終了(辞書と書籍では単語"
+"または項目)"
+
+#: src/main.c:432
+msgid "Parse every verse or entry of the given modules and report problems"
+msgstr "指定したモジュールのすべての節または項目を解析し、問題を報告する"
+
+#: src/main.c:435
+msgid ""
+"Print the verses of the given module with all these words (or a Strong's "
+"number like H430) and exit"
+msgstr ""
+"指定したモジュールから、これらの語(または H430 のようなストロング番号)をすべ"
+"て含む節を出力して終了"
+
+#: src/main.c:436
+msgid "WORDS"
+msgstr "語"
+
+#: src/main.c:437
+msgid "With --search: the words together, in order"
+msgstr "--search と併用: 語を順番どおりに連続して"
+
+#: src/main.c:438
+msgid "With --search: match whole words only"
+msgstr "--search と併用: 完全な単語のみ一致"
+
+#: src/main.c:439
+msgid "Show the version and exit"
+msgstr "バージョンを表示して終了"
+
+#: src/main.c:440
+msgid "[MODULE.mybible…]"
+msgstr "[モジュール.mybible…]"
+
+#: src/module.c:146
+#, c-format
+msgid "%s is not a MySword Bible module (%s)"
+msgstr "%s は MySword の聖書モジュールではありません (%s)"
+
+#: src/module.c:181 src/res.c:291
+msgid ""
+"This is an encrypted MySword module. Encrypted modules are not supported."
+msgstr ""
+"これは暗号化された MySword モジュールです。暗号化されたモジュールには対応して"
+"いません。"
+
+#: src/module.c:184
+msgid "This module is compressed in a format kisword does not read yet."
+msgstr "このモジュールは kisword がまだ読めない形式で圧縮されています。"
+
+#: src/module.c:187
+msgid ""
+"The verse text in this module is binary (probably encrypted or compressed)."
+msgstr ""
+"このモジュールの節のテキストはバイナリです(おそらく暗号化または圧縮されていま"
+"す)。"
+
+#: src/module.c:363
+#, c-format
+msgid "%s has no verses."
+msgstr "%s には節がありません。"
+
+#: src/render.c:331
+msgid "No dictionary installed has this number."
+msgstr "この番号を持つ辞書はインストールされていません。"
+
+#: src/render.c:502
+msgid "This module does not have this chapter."
+msgstr "このモジュールにはこの章がありません。"
+
+#: src/res.c:215
+#, c-format
+msgid "%s is not a MySword commentary (%s)"
+msgstr "%s は MySword の注解書ではありません (%s)"
+
+#: src/res.c:216
+#, c-format
+msgid "%s is not a MySword dictionary (%s)"
+msgstr "%s は MySword の辞書ではありません (%s)"
+
+#: src/res.c:217
+#, c-format
+msgid "%s is not a MySword book (%s)"
+msgstr "%s は MySword の書籍ではありません (%s)"
+
+#: src/res.c:218
+#, c-format
+msgid "%s is not a MySword journal (%s)"
+msgstr "%s は MySword のジャーナルではありません (%s)"
+
+#: src/res.c:227
+#, c-format
+msgid "%s is not a MySword module"
+msgstr "%s は MySword のモジュールではありません"
+
+#: src/res.c:268
+msgid "no table of entries"
+msgstr "項目の表がありません"
+
+#: src/res.c:294
+msgid "The text in this module is binary (probably encrypted or compressed)."
+msgstr ""
+"このモジュールのテキストはバイナリです(おそらく暗号化または圧縮されていま"
+"す)。"
+
+#: src/searchpane.c:88
+#, c-format
+msgid "%u verses (showing the first %u)"
+msgstr "%u 節(最初の %u 節を表示)"
+
+#: src/searchpane.c:90
+#, c-format
+msgid "%u verse"
+msgid_plural "%u verses"
+msgstr[0] "%u 節"
+
+#: src/searchpane.c:143
+msgid "Preparing the search…"
+msgstr "検索を準備しています…"
+
+#: src/searchpane.c:256
+msgid "All words"
+msgstr "すべての語"
+
+#: src/searchpane.c:256
+msgid "Any word"
+msgstr "いずれかの語"
+
+#: src/searchpane.c:256
+msgid "Exact phrase"
+msgstr "完全な句"
+
+#: src/searchpane.c:257
+msgid "New Testament"
+msgstr "新約聖書"
+
+#: src/searchpane.c:257
+msgid "Old Testament"
+msgstr "旧約聖書"
+
+#: src/searchpane.c:257
+msgid "Whole Bible"
+msgstr "聖書全体"
+
+#: src/searchpane.c:258
+msgid "Current book"
+msgstr "現在の書"
+
+#: src/searchpane.c:273
+msgid "Words to search for, or a Strong's number such as H430 or G26"
+msgstr "検索する語、または H430 や G26 のようなストロング番号"
+
+#: src/searchpane.c:278
+msgid "Search"
+msgstr "検索"
+
+#: src/searchpane.c:284
+msgid "Close the search (Esc)"
+msgstr "検索を閉じる (Esc)"
+
+#: src/searchpane.c:293
+msgid "_Whole words"
+msgstr "単語単位(_W)"
+
+#: src/studypane.c:369
+#, c-format
+msgid "%s is not in %s."
+msgstr "%s は %s にありません。"
+
+#: src/studypane.c:509
+msgid "This module has no entries."
+msgstr "このモジュールには項目がありません。"
+
+#: src/studypane.c:625
+#, c-format
+msgid "%s has no comment on %s."
+msgstr "%s には %s の注解がありません。"
+
+#: src/studypane.c:666
+#, c-format
+msgid "Picture not found: %s"
+msgstr "画像が見つかりません: %s"
+
+#: src/studypane.c:682
+#, c-format
+msgid "Link not supported: %s"
+msgstr "対応していないリンク: %s"
+
+#: src/studypane.c:693 src/studypane.c:697 src/studypane.c:701
+#, c-format
+msgid "No dictionary has %s."
+msgstr "%s を持つ辞書はありません。"
+
+#: src/studypane.c:718
+#, c-format
+msgid "Entry not found: %s"
+msgstr "項目が見つかりません: %s"
+
+#: src/studypane.c:773
+msgid "This dictionary does not have this word."
+msgstr "この辞書にはこの語がありません。"
+
+#: src/studypane.c:774 src/studypane.c:1024
+msgid "Type a word, or pick one from the list."
+msgstr "語を入力するか、一覧から選んでください。"
+
+#: src/studypane.c:850 src/window.c:1125
+msgid "Strong's numbers"
+msgstr "ストロング番号"
+
+#: src/studypane.c:850
+msgid "morphology codes"
+msgstr "形態コード"
+
+#: src/studypane.c:895 src/window.c:1295
+msgid "Book"
+msgstr "書籍"
+
+#: src/studypane.c:895 src/studypane.c:1080
+msgid "Commentary"
+msgstr "注解書"
+
+#: src/studypane.c:895 src/studypane.c:1080
+msgid "Dictionary"
+msgstr "辞書"
+
+#: src/studypane.c:895
+msgid "Journal"
+msgstr "ジャーナル"
+
+#: src/studypane.c:918
+msgid "Previous entry"
+msgstr "前の項目"
+
+#: src/studypane.c:919
+msgid "Next entry"
+msgstr "次の項目"
+
+#: src/studypane.c:924
+msgid "Back"
+msgstr "戻る"
+
+#: src/studypane.c:933
+msgid "A word or a Strong's number (H430, G26); Enter shows it"
+msgstr "語またはストロング番号 (H430, G26)。Enter で表示します"
+
+#: src/studypane.c:991
+#, c-format
+msgid ""
+"No commentary found.\n"
+"\n"
+"Copy *.cmt.mybible files to %s, or use File → Open module…"
+msgstr ""
+"注解書が見つかりません。\n"
+"\n"
+"*.cmt.mybible ファイルを %s にコピーするか、ファイル → モジュールを開く… を"
+"使ってください。"
+
+#: src/studypane.c:992
+#, c-format
+msgid ""
+"No dictionary found.\n"
+"\n"
+"Copy *.dct.mybible files to %s, or use File → Open module…"
+msgstr ""
+"辞書が見つかりません。\n"
+"\n"
+"*.dct.mybible ファイルを %s にコピーするか、ファイル → モジュールを開く… を"
+"使ってください。"
+
+#: src/studypane.c:993
+#, c-format
+msgid ""
+"No book found.\n"
+"\n"
+"Copy *.bok.mybible files to %s, or use File → Open module…"
+msgstr ""
+"書籍が見つかりません。\n"
+"\n"
+"*.bok.mybible ファイルを %s にコピーするか、ファイル → モジュールを開く… を"
+"使ってください。"
+
+#: src/studypane.c:994
+#, c-format
+msgid ""
+"No journal found.\n"
+"\n"
+"Copy *.jor.mybible files to %s, or use File → Open module…"
+msgstr ""
+"ジャーナルが見つかりません。\n"
+"\n"
+"*.jor.mybible ファイルを %s にコピーするか、ファイル → モジュールを開く… を"
+"使ってください。"
+
+#: src/studypane.c:1080
+msgid "Books"
+msgstr "書籍"
+
+#: src/studypane.c:1080
+msgid "Journals"
+msgstr "ジャーナル"
+
+#: src/window.c:340
+msgid "This module has no options."
+msgstr "このモジュールにはオプションがありません。"
+
+#: src/window.c:455 src/window.c:838
+#, c-format
+msgid "%s is not in this module."
+msgstr "%s はこのモジュールにありません。"
+
+#: src/window.c:522
+msgid "Close this parallel Bible"
+msgstr "この並行聖書を閉じる"
+
+#: src/window.c:607 src/window.c:768 src/window.c:968 src/window.c:1026
+msgid "Could not open the module"
+msgstr "モジュールを開けませんでした"
+
+#: src/window.c:641
+msgid "Parallel Bibles"
+msgstr "並行聖書"
+
+#: src/window.c:651
+#, c-format
+msgid "Show these Bibles along with %s (up to %d):"
+msgstr "%s と一緒にこれらの聖書を表示(最大 %d):"
+
+#: src/window.c:692
+msgid "Side by side, in _columns"
+msgstr "列に並べて表示(_C)"
+
+#: src/window.c:694
+msgid "_Interleaved, verse by verse"
+msgstr "1節ごとに交互に表示(_I)"
+
+#: src/window.c:715
+#, c-format
+msgid "At most %d parallel Bibles; the others were left out."
+msgstr "並行聖書は最大 %d 冊です。残りは除外されました。"
+
+#: src/window.c:833
+#, c-format
+msgid "Reference not recognized: %s"
+msgstr "参照を認識できません: %s"
+
+#: src/window.c:999
+msgid "Open MySword module"
+msgstr "MySword モジュールを開く"
+
+#: src/window.c:1003
+msgid "MySword modules (*.mybible)"
+msgstr "MySword モジュール (*.mybible)"
+
+#: src/window.c:1004
+msgid "Bibles (*.bbl.mybible)"
+msgstr "聖書 (*.bbl.mybible)"
+
+#: src/window.c:1005
+msgid "Commentaries (*.cmt.mybible)"
+msgstr "注解書 (*.cmt.mybible)"
+
+#: src/window.c:1006
+msgid "Dictionaries (*.dct.mybible)"
+msgstr "辞書 (*.dct.mybible)"
+
+#: src/window.c:1007
+msgid "Books and journals (*.bok.mybible, *.jor.mybible)"
+msgstr "書籍とジャーナル (*.bok.mybible, *.jor.mybible)"
+
+#: src/window.c:1039
+msgid "Text font"
+msgstr "本文のフォント"
+
+#: src/window.c:1103
+msgid "A light Bible reader for MySword modules."
+msgstr "MySword モジュール用の軽量な聖書リーダー。"
+
+#: src/window.c:1123
+#, c-format
+msgid "%d book"
+msgid_plural "%d books"
+msgstr[0] "%d 冊"
+
+#: src/window.c:1127
+msgid "right to left"
+msgstr "右から左"
+
+#: src/window.c:1129
+msgid "verse rules"
+msgstr "節の規則"
+
+#: src/window.c:1181
+msgid "_File"
+msgstr "ファイル(_F)"
+
+#: src/window.c:1182
+msgid "_Open module…"
+msgstr "モジュールを開く(_O)…"
+
+#: src/window.c:1184
+msgid "_Quit"
+msgstr "終了(_Q)"
+
+#: src/window.c:1186
+msgid "_View"
+msgstr "表示(_V)"
+
+#: src/window.c:1187
+msgid "_Strong's numbers"
+msgstr "ストロング番号(_S)"
+
+#: src/window.c:1188
+msgid "_Footnotes"
+msgstr "脚注(_F)"
+
+#: src/window.c:1189
+msgid "Words of Jesus in _red"
+msgstr "イエスの言葉を赤字で(_R)"
+
+#: src/window.c:1190
+msgid "_Paragraph layout"
+msgstr "段落レイアウト(_P)"
+
+#: src/window.c:1191
+msgid "_Interlinear in columns"
+msgstr "行間訳を列で表示(_I)"
+
+#: src/window.c:1193
+msgid "Pa_rallel Bibles…"
+msgstr "並行聖書(_R)…"
+
+#: src/window.c:1194
+msgid "Module _options"
+msgstr "モジュールのオプション(_O)"
+
+#: src/window.c:1198
+msgid "Zoom _in"
+msgstr "拡大(_I)"
+
+#: src/window.c:1201
+msgid "Zoom _out"
+msgstr "縮小(_O)"
+
+#: src/window.c:1203
+msgid "_Normal size"
+msgstr "標準サイズ(_N)"
+
+#: src/window.c:1204
+msgid "_Font…"
+msgstr "フォント(_F)…"
+
+#: src/window.c:1206
+msgid "_Study"
+msgstr "学習(_S)"
+
+#: src/window.c:1207
+msgid "Study _panel"
+msgstr "学習パネル(_P)"
+
+#: src/window.c:1214
+msgid "_Commentary"
+msgstr "注解書(_C)"
+
+#: src/window.c:1215
+msgid "_Dictionary"
+msgstr "辞書(_D)"
+
+#: src/window.c:1216
+msgid "_Books"
+msgstr "書籍(_B)"
+
+#: src/window.c:1217
+msgid "_Journals"
+msgstr "ジャーナル(_J)"
+
+#: src/window.c:1219
+msgid "_Look up in the dictionary"
+msgstr "辞書で調べる(_L)"
+
+#: src/window.c:1221
+msgid "_Go"
+msgstr "移動(_G)"
+
+#: src/window.c:1222
+msgid "_Back"
+msgstr "戻る(_B)"
+
+#: src/window.c:1223
+msgid "_Forward"
+msgstr "進む(_F)"
+
+#: src/window.c:1225
+msgid "_Previous chapter"
+msgstr "前の章(_P)"
+
+#: src/window.c:1226
+msgid "_Next chapter"
+msgstr "次の章(_N)"
+
+#: src/window.c:1228
+msgid "_Go to reference…"
+msgstr "参照へ移動(_G)…"
+
+#: src/window.c:1229
+msgid "_Search…"
+msgstr "検索(_S)…"
+
+#: src/window.c:1231
+msgid "_Help"
+msgstr "ヘルプ(_H)"
+
+#: src/window.c:1232
+msgid "About the Bible _module…"
+msgstr "聖書モジュールについて(_M)…"
+
+#: src/window.c:1233
+msgid "_About"
+msgstr "kisword について(_A)"
+
+#: src/window.c:1286
+msgid "Bible module"
+msgstr "聖書モジュール"
+
+#: src/window.c:1300
+msgid "Chapter"
+msgstr "章"
+
+#: src/window.c:1303
+msgid "Back (Alt+Left)"
+msgstr "戻る (Alt+←)"
+
+#: src/window.c:1304
+msgid "Forward (Alt+Right)"
+msgstr "進む (Alt+→)"
+
+#: src/window.c:1306
+msgid "Parallel Bibles on/off (F8 to choose them)"
+msgstr "並行聖書のオン/オフ (F8 で選択)"
+
+#: src/window.c:1308
+msgid "Show/hide the study panel"
+msgstr "学習パネルの表示/非表示"
+
+#: src/window.c:1313
+msgid "Go to a reference, e.g. \"Jo 3:16\", \"1Co 13\" or \"gn 1\" (Ctrl+L)"
+msgstr "参照へ移動(例: \"Jo 3:16\"、\"1Co 13\"、\"gn 1\")(Ctrl+L)"
+
+#: src/window.c:1325
+msgid "Go to:"
+msgstr "移動先:"
+
+#: src/window.c:1454
+#, c-format
+msgid ""
+"No MySword Bible module found.\n"
+"\n"
+"Copy *.bbl.mybible files to %s, or use File → Open module…"
+msgstr ""
+"MySword の聖書モジュールが見つかりません。\n"
+"\n"
+"*.bbl.mybible ファイルを %s にコピーするか、ファイル → モジュールを開く… を"
+"使ってください。"

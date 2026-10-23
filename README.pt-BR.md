@@ -47,8 +47,8 @@ mas é um programa separado; pode vir a fazer parte de um futuro
 - Ajuda → Sobre o módulo mostra os detalhes do módulo e sua descrição (o HTML
   de `Details.Comments`) formatada.
 - Módulos da direita para a esquerda são exibidos nessa direção.
-- Interface em inglês e português do Brasil; os nomes dos livros seguem o
-  idioma do sistema.
+- Interface em inglês, português do Brasil, esperanto e japonês; os nomes dos
+  livros são em português ou inglês, conforme o idioma do sistema.
 
 - Painel de estudo à direita (F4) com **comentários** (`*.cmt.mybible`,
   acompanhando o versículo mostrado ou clicado), **dicionários**
