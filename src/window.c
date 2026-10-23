@@ -51,6 +51,7 @@ typedef struct {
 
     GtkWidget *win, *mod_combo, *book_combo, *chap_spin, *entry, *status;
     GtkWidget *back_btn, *fwd_btn, *back_item, *fwd_item, *info_item, *search_item, *par_item, *opts_item;
+    GtkWidget *par_btn, *study_btn;
     GtkListStore *mod_store, *book_store;
     GtkCheckMenuItem *chk_strong, *chk_notes, *chk_red, *chk_para, *chk_stacked;
     guint status_ctx;
@@ -62,6 +63,9 @@ typedef struct {
 } KsWin;
 
 /* ---- small helpers -------------------------------------------------------- */
+
+/* The parallels showing: the chosen ones, unless switched off. */
+static guint npar(const KsWin *w) { return w->cfg->parallel_on ? w->par->len : 0; }
 
 static void status(KsWin *w, const char *fmt, ...) G_GNUC_PRINTF(2, 3);
 
@@ -182,6 +186,7 @@ static void sync_widgets(KsWin *w)
     gtk_widget_set_sensitive(w->info_item, w->mod != NULL);
     gtk_widget_set_sensitive(w->search_item, w->mod != NULL);
     gtk_widget_set_sensitive(w->par_item, w->mod != NULL);
+    gtk_widget_set_sensitive(w->par_btn, w->mod != NULL);
 
     if (w->mod) {
         ref = g_strdup_printf("%s %d", ks_book_name(w->book), w->chapter);
@@ -190,7 +195,7 @@ static void sync_widgets(KsWin *w)
             GString *labels = g_string_new(ks_module_label(w->mod));
             char *title;
 
-            for (guint i = 0; i < w->par->len; i++)
+            for (guint i = 0; i < npar(w); i++)
                 g_string_append_printf(labels, " + %s", ks_module_label(g_ptr_array_index(w->par, i)));
             title = g_strdup_printf("%s (%s) — kisword", ref, labels->str);
             gtk_window_set_title(GTK_WINDOW(w->win), title);
@@ -243,7 +248,7 @@ static void navigate(KsWin *w, int book, int chapter, int scroll_verse, int hl_f
         KsModule *mods[KS_VIEW_MAX_MODS] = { m };
         int n = 1;
 
-        for (guint i = 0; w->cfg->interleave && i < w->par->len && n < KS_VIEW_MAX_MODS; i++)
+        for (guint i = 0; w->cfg->interleave && i < npar(w) && n < KS_VIEW_MAX_MODS; i++)
             mods[n++] = g_ptr_array_index(w->par, i);
         w->syncing = TRUE;
         ks_view_show(w->view, mods, n, book, chapter, scroll_verse, hl_from, hl_to);
@@ -370,6 +375,7 @@ static void show_study(KsWin *w, gboolean show)
     w->cfg->study = show;
     w->busy = TRUE;
     gtk_check_menu_item_set_active(w->chk_study, show);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w->study_btn), show);
     w->busy = FALSE;
 }
 
@@ -545,7 +551,7 @@ static void set_main_head(KsWin *w, gboolean show)
  * again. */
 static void parallels_changed(KsWin *w, gboolean show)
 {
-    gboolean columns = !w->cfg->interleave && w->par->len;
+    gboolean columns = !w->cfg->interleave && npar(w);
     char **paths;
 
     for (guint i = 0; i < w->par_views->len; i++)
@@ -555,7 +561,7 @@ static void parallels_changed(KsWin *w, gboolean show)
     g_ptr_array_set_size(w->par_views, 0);
     g_ptr_array_set_size(w->par_cols, 0);
 
-    for (guint i = 0; columns && i < w->par->len; i++) {
+    for (guint i = 0; columns && i < npar(w); i++) {
         KsModule *m = g_ptr_array_index(w->par, i);
         KsViewOptions opt = { w->cfg->show_strong, w->cfg->show_notes, w->cfg->red_letters, w->cfg->paragraphs,
                               w->cfg->stacked };
@@ -581,6 +587,9 @@ static void parallels_changed(KsWin *w, gboolean show)
         paths[i] = g_strdup(((KsModule *)g_ptr_array_index(w->par, i))->real);
     g_strfreev(w->cfg->parallel);
     w->cfg->parallel = paths;
+    w->busy = TRUE;
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w->par_btn), npar(w) > 0);
+    w->busy = FALSE;
 
     if (show && w->mod && w->book)
         navigate(w, w->book, w->chapter, ks_view_top_verse(w->view), 0, 0, FALSE);
@@ -714,10 +723,31 @@ static void cmd_parallel(KsWin *w)
                 ks_module_close(g_ptr_array_index(old, i));
         g_ptr_array_free(old, TRUE);
         w->cfg->interleave = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(inter));
+        w->cfg->parallel_on = w->par->len > 0;
         parallels_changed(w, TRUE);
     }
     g_object_unref(store);
     gtk_widget_destroy(d);
+}
+
+/* Toolbar: the parallels on or off, keeping the choice; with none chosen
+ * yet, the dialog to choose them. */
+static void cmd_parallel_toggled(KsWin *w)
+{
+    if (w->busy || !w->mod)
+        return;
+    if (!w->par->len) {
+        cmd_parallel(w);
+        return;
+    }
+    w->cfg->parallel_on = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w->par_btn));
+    parallels_changed(w, TRUE);
+}
+
+static void cmd_study_btn_toggled(KsWin *w)
+{
+    if (!w->busy)
+        show_study(w, gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w->study_btn)));
 }
 
 /* show: render right away (FALSE only at startup, where the first
@@ -1215,6 +1245,17 @@ static GtkWidget *icon_button(const char *stock, const char *tip, void (*cmd)(Ks
     return b;
 }
 
+static GtkWidget *icon_toggle(const char *stock, const char *tip, void (*cmd)(KsWin *), KsWin *w)
+{
+    GtkWidget *b = gtk_toggle_button_new();
+
+    gtk_button_set_image(GTK_BUTTON(b), gtk_image_new_from_stock(stock, GTK_ICON_SIZE_SMALL_TOOLBAR));
+    gtk_button_set_relief(GTK_BUTTON(b), GTK_RELIEF_NONE);
+    gtk_widget_set_tooltip_text(b, tip);
+    g_signal_connect_swapped(b, "toggled", G_CALLBACK(cmd), w);
+    return b;
+}
+
 static GtkWidget *build_toolbar(KsWin *w)
 {
     GtkWidget *box = gtk_hbox_new(FALSE, 4);
@@ -1262,6 +1303,11 @@ static GtkWidget *build_toolbar(KsWin *w)
     w->back_btn = icon_button(GTK_STOCK_GO_BACK, _("Back (Alt+Left)"), cmd_back, w);
     w->fwd_btn = icon_button(GTK_STOCK_GO_FORWARD, _("Forward (Alt+Right)"), cmd_forward, w);
 
+    w->par_btn = icon_toggle(GTK_STOCK_DND_MULTIPLE, _("Parallel Bibles on/off (F8 to choose them)"),
+                             cmd_parallel_toggled, w);
+    w->study_btn = icon_toggle(GTK_STOCK_INDEX, _("Show/hide the study panel"), cmd_study_btn_toggled, w);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w->study_btn), w->cfg->study);
+
     w->entry = gtk_entry_new();
     gtk_entry_set_width_chars(GTK_ENTRY(w->entry), 14);
     gtk_widget_set_tooltip_text(w->entry, _("Go to a reference, e.g. \"Jo 3:16\", \"1Co 13\" or \"gn 1\" (Ctrl+L)"));
@@ -1272,6 +1318,9 @@ static GtkWidget *build_toolbar(KsWin *w)
     gtk_box_pack_start(GTK_BOX(box), w->chap_spin, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(box), w->back_btn, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(box), w->fwd_btn, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(box), gtk_vseparator_new(), FALSE, FALSE, 6);
+    gtk_box_pack_start(GTK_BOX(box), w->par_btn, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(box), w->study_btn, FALSE, FALSE, 0);
     gtk_box_pack_end(GTK_BOX(box), w->entry, FALSE, FALSE, 0);
     gtk_box_pack_end(GTK_BOX(box), gtk_label_new(_("Go to:")), FALSE, FALSE, 0);
     return box;

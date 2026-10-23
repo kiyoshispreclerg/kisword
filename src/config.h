@@ -11,6 +11,7 @@ typedef struct {
     char **module_files;  /* modules opened with File > Open */
     char *module;         /* path of the last module used */
     char **parallel;      /* paths of the parallel Bibles shown with it */
+    gboolean parallel_on; /* the parallels are shown (the choice is kept when off) */
     gboolean interleave;  /* parallels verse by verse in one view, not in columns */
     char **rules_off;     /* module options switched off: "file name|option name" */
     int book, chapter, verse;

@@ -85,6 +85,7 @@ KsConfig *ks_config_load(void)
     c->stacked = TRUE;
     c->width = 760;
     c->height = 680;
+    c->parallel_on = TRUE;
     c->study = TRUE;
     c->study_tab = 1;
     c->study_width = 380;
@@ -95,6 +96,7 @@ KsConfig *ks_config_load(void)
         get_str(kf, "module", &c->module);
         get_list(kf, "parallel", &c->parallel);
         get_bool(kf, "interleave", &c->interleave);
+        get_bool(kf, "parallel_on", &c->parallel_on);
         get_list(kf, "rules_off", &c->rules_off);
         get_int(kf, "book", &c->book);
         get_int(kf, "chapter", &c->chapter);
@@ -143,6 +145,7 @@ void ks_config_save(const KsConfig *c)
     g_key_file_set_string_list(kf, GROUP, "parallel", (const char *const *)c->parallel,
                                g_strv_length(c->parallel));
     g_key_file_set_boolean(kf, GROUP, "interleave", c->interleave);
+    g_key_file_set_boolean(kf, GROUP, "parallel_on", c->parallel_on);
     g_key_file_set_string_list(kf, GROUP, "rules_off", (const char *const *)c->rules_off,
                                g_strv_length(c->rules_off));
     g_key_file_set_integer(kf, GROUP, "book", c->book);
