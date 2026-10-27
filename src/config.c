@@ -66,28 +66,42 @@ static void get_list(GKeyFile *kf, const char *key, char ***out)
     }
 }
 
+/* Loads path as a key file that has at least one group: an empty or zeroed
+ * file (what a power cut leaves) parses fine but holds nothing. */
+static gboolean load_good_keyfile(GKeyFile *kf, const char *path)
+{
+    gsize groups = 0;
+    char **names;
+
+    if (!g_key_file_load_from_file(kf, path, G_KEY_FILE_NONE, NULL))
+        return FALSE;
+    names = g_key_file_get_groups(kf, &groups);
+    g_strfreev(names);
+    return groups > 0;
+}
+
 /* Loads path; if it is missing or corrupt, falls back to path.backup. */
 static gboolean load_keyfile(GKeyFile *kf, const char *path)
 {
     char *bak = g_strconcat(path, ".backup", NULL);
-    gboolean ok = g_key_file_load_from_file(kf, path, G_KEY_FILE_NONE, NULL) ||
-                  g_key_file_load_from_file(kf, bak, G_KEY_FILE_NONE, NULL);
+    gboolean ok = load_good_keyfile(kf, path);
+
+    ok = ok || load_good_keyfile(kf, bak);
 
     g_free(bak);
     return ok;
 }
 
-/* Keeps the last good config as path.backup. Only a file that still parses is
- * copied, so a corrupt config never overwrites a good backup. The copy is
- * atomic too (temp file + rename). */
+/* Keeps the last good config as path.backup. Only a file that still parses and
+ * is not empty is copied, so a corrupt config never overwrites a good backup.
+ * The copy is atomic too (temp file + rename). */
 static void backup_config(const char *path)
 {
     GKeyFile *kf = g_key_file_new();
     char *data = NULL, *bak;
     gsize len = 0;
 
-    if (g_key_file_load_from_file(kf, path, G_KEY_FILE_NONE, NULL) &&
-        g_file_get_contents(path, &data, &len, NULL)) {
+    if (load_good_keyfile(kf, path) && g_file_get_contents(path, &data, &len, NULL)) {
         bak = g_strconcat(path, ".backup", NULL);
         if (!g_file_set_contents(bak, data, len, NULL))
             g_printerr("kisword: could not write %s\n", bak);

@@ -11,3 +11,4 @@ tests/test_search
 tests/test_boxes
 tests/test_link
 tests/test_res
+tests/test_config

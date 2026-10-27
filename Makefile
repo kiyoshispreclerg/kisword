@@ -62,7 +62,7 @@ update-po: po/kisword.pot
 # ---- tests -------------------------------------------------------------------
 
 TESTS := tests/test_gbf tests/test_boxes tests/test_rules tests/test_html tests/test_ref tests/test_link tests/test_module \
-	tests/test_search tests/test_res
+	tests/test_search tests/test_res tests/test_config
 
 GBF_SRCS := src/gbf.c src/style.c src/html.c src/boxes.c
 GBF_HDRS := src/gbf.h src/html.h src/boxes.h
@@ -95,6 +95,9 @@ tests/test_res: tests/test_res.c src/res.c src/res.h $(MODULE_SRCS) src/module.h
 
 tests/test_search: tests/test_search.c src/search.c src/search.h $(MODULE_SRCS) src/module.h $(GBF_HDRS)
 	$(CC) $(CFLAGS) $(TEST_CFLAGS) $(DEFS) -Isrc -o $@ tests/test_search.c src/search.c $(MODULE_SRCS) $(TEST_LIBS) $(LIBINTL)
+
+tests/test_config: tests/test_config.c src/config.c src/config.h
+	$(CC) $(CFLAGS) $(TEST_CFLAGS) -Isrc -o $@ tests/test_config.c src/config.c $(TEST_LIBS)
 
 # Unit tests always; the real modules in interno/ (kept out of the
 # repository) too, when present.
