@@ -66,6 +66,37 @@ static void get_list(GKeyFile *kf, const char *key, char ***out)
     }
 }
 
+/* Loads path; if it is missing or corrupt, falls back to path.backup. */
+static gboolean load_keyfile(GKeyFile *kf, const char *path)
+{
+    char *bak = g_strconcat(path, ".backup", NULL);
+    gboolean ok = g_key_file_load_from_file(kf, path, G_KEY_FILE_NONE, NULL) ||
+                  g_key_file_load_from_file(kf, bak, G_KEY_FILE_NONE, NULL);
+
+    g_free(bak);
+    return ok;
+}
+
+/* Keeps the last good config as path.backup. Only a file that still parses is
+ * copied, so a corrupt config never overwrites a good backup. The copy is
+ * atomic too (temp file + rename). */
+static void backup_config(const char *path)
+{
+    GKeyFile *kf = g_key_file_new();
+    char *data = NULL, *bak;
+    gsize len = 0;
+
+    if (g_key_file_load_from_file(kf, path, G_KEY_FILE_NONE, NULL) &&
+        g_file_get_contents(path, &data, &len, NULL)) {
+        bak = g_strconcat(path, ".backup", NULL);
+        if (!g_file_set_contents(bak, data, len, NULL))
+            g_printerr("kisword: could not write %s\n", bak);
+        g_free(bak);
+    }
+    g_free(data);
+    g_key_file_free(kf);
+}
+
 KsConfig *ks_config_load(void)
 {
     KsConfig *c = g_new0(KsConfig, 1);
@@ -90,7 +121,7 @@ KsConfig *ks_config_load(void)
     c->study_tab = 1;
     c->study_width = 380;
 
-    if (g_key_file_load_from_file(kf, path, G_KEY_FILE_NONE, NULL)) {
+    if (load_keyfile(kf, path)) {
         get_list(kf, "modules_dirs", &c->modules_dirs);
         get_list(kf, "module_files", &c->module_files);
         get_str(kf, "module", &c->module);
@@ -175,7 +206,9 @@ void ks_config_save(const KsConfig *c)
 
     data = g_key_file_to_data(kf, &len, NULL);
     g_mkdir_with_parents(dir, 0755);
-    g_file_set_contents(path, data, len, NULL);
+    backup_config(path);
+    if (!g_file_set_contents(path, data, len, NULL))
+        g_printerr("kisword: could not write %s\n", path);
     g_free(data);
     g_free(dir);
     g_free(path);
